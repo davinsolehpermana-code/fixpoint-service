@@ -14,3 +14,6 @@ Route::get('/ketersediaan-jadwal', function () {
 Route::get('/booking', function () {
     return view('booking');
 });
+Route::get('/dashboard-admin', function () {
+    return view('dashboard-admin');
+});
