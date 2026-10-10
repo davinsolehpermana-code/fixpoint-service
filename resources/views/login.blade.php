@@ -17,95 +17,64 @@
         max-width: 420px;
         background: #ffffff;
         border: 1px solid #e5e7eb;
-        border-radius: 16px;
-        padding: 32px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        border-radius: 14px;
+        padding: 30px;
+        box-shadow: 0 8px 30px rgba(15, 23, 42, 0.06);
     }
 
     .login-header {
         text-align: center;
-        margin-bottom: 28px;
+        margin-bottom: 24px;
     }
 
     .login-label {
-        display: inline-block;
-        font-size: 12px;
-        font-weight: 700;
         color: #2563eb;
-        letter-spacing: 1px;
-        margin-bottom: 8px;
+        font-size: 12px;
+        font-weight: 800;
+        margin-bottom: 7px;
     }
 
     .login-title {
-        margin: 0;
-        font-size: 28px;
-        font-weight: 700;
         color: #111827;
+        font-size: 28px;
+        margin-bottom: 7px;
     }
 
     .login-description {
-        margin-top: 8px;
-        font-size: 14px;
         color: #6b7280;
+        font-size: 13px;
     }
 
     .form-group {
-        margin-bottom: 20px;
+        margin-bottom: 17px;
     }
 
     .form-label {
         display: block;
-        margin-bottom: 8px;
-        font-size: 14px;
-        font-weight: 600;
+        margin-bottom: 7px;
         color: #374151;
+        font-size: 13px;
+        font-weight: 700;
     }
 
     .form-control {
         width: 100%;
-        padding: 12px 14px;
         border: 1px solid #d1d5db;
-        border-radius: 10px;
+        border-radius: 8px;
+        padding: 11px 13px;
         font-size: 14px;
         outline: none;
-        box-sizing: border-box;
-        transition: 0.2s;
+        background: #ffffff;
     }
 
     .form-control:focus {
         border-color: #2563eb;
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-    }
-
-    .password-wrapper {
-        position: relative;
-    }
-
-    .password-wrapper .form-control {
-        padding-right: 45px;
-    }
-
-    .password-toggle {
-        position: absolute;
-        right: 12px;
-        top: 50%;
-        transform: translateY(-50%);
-        border: none;
-        background: transparent;
-        cursor: pointer;
-        padding: 4px;
-        color: #6b7280;
-    }
-
-    .password-toggle svg {
-        width: 20px;
-        height: 20px;
     }
 
     .role-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 12px;
+        gap: 10px;
     }
 
     .role-option {
@@ -119,15 +88,20 @@
 
     .role-option label {
         display: block;
-        padding: 12px;
-        text-align: center;
-        border: 1px solid #d1d5db;
-        border-radius: 10px;
+        border: 1px solid #dbe2ea;
+        border-radius: 9px;
+        padding: 13px;
         cursor: pointer;
-        font-size: 14px;
-        font-weight: 600;
-        color: #374151;
+        text-align: center;
+        color: #4b5563;
+        font-size: 13px;
+        font-weight: 700;
         transition: 0.2s;
+    }
+
+    .role-option label:hover {
+        border-color: #2563eb;
+        background: #eff6ff;
     }
 
     .role-option input:checked + label {
@@ -138,15 +112,15 @@
 
     .login-button {
         width: 100%;
-        padding: 13px;
         border: none;
-        border-radius: 10px;
         background: #2563eb;
         color: #ffffff;
-        font-size: 15px;
-        font-weight: 700;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 800;
         cursor: pointer;
-        transition: 0.2s;
+        margin-top: 6px;
     }
 
     .login-button:hover {
@@ -155,45 +129,62 @@
 
     .login-note {
         margin-top: 18px;
+        color: #9ca3af;
+        font-size: 11px;
         text-align: center;
-        font-size: 12px;
-        color: #6b7280;
+    }
+
+    @media (max-width: 480px) {
+        .login-card {
+            padding: 22px;
+        }
+
+        .role-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 
 <div class="login-page">
+
     <div class="login-card">
 
         <div class="login-header">
-            <span class="login-label">FIXPOINT SERVICE</span>
 
-            <h1 class="login-title">Masuk</h1>
+            <div class="login-label">
+                FIXPOINT SERVICE
+            </div>
+
+            <h1 class="login-title">
+                Masuk
+            </h1>
 
             <p class="login-description">
-                Silakan masuk untuk mengakses sistem.
+                Masuk ke panel pengelolaan FixPoint Service.
             </p>
+
         </div>
 
-        {{-- Form Login --}}
-        <form method="POST" action="{{ route('login.process') }}">
-            @csrf
+        <form>
 
-            {{-- Role --}}
             <div class="form-group">
-                <label class="form-label">Role</label>
+
+                <label class="form-label">
+                    Masuk Sebagai
+                </label>
 
                 <div class="role-grid">
 
                     <div class="role-option">
                         <input
                             type="radio"
-                            id="roleAdmin"
+                            id="admin"
                             name="role"
                             value="admin"
                             checked
                         >
 
-                        <label for="roleAdmin">
+                        <label for="admin">
                             Admin
                         </label>
                     </div>
@@ -201,123 +192,49 @@
                     <div class="role-option">
                         <input
                             type="radio"
-                            id="rolePemilik"
+                            id="pemilik"
                             name="role"
                             value="pemilik"
                         >
 
-                        <label for="rolePemilik">
+                        <label for="pemilik">
                             Pemilik Usaha
                         </label>
                     </div>
 
                 </div>
+
             </div>
 
-            {{-- Email --}}
             <div class="form-group">
-                <label for="email" class="form-label">
+
+                <label class="form-label">
                     Email
                 </label>
 
                 <input
                     type="email"
-                    id="email"
-                    name="email"
                     class="form-control"
                     placeholder="Masukkan email"
-                    value="{{ old('email') }}"
-                    required
                 >
+
             </div>
 
-            {{-- Password --}}
             <div class="form-group">
-                <label for="password" class="form-label">
+
+                <label class="form-label">
                     Password
                 </label>
 
-                <div class="password-wrapper">
+                <input
+                    type="password"
+                    class="form-control"
+                    placeholder="Masukkan password"
+                >
 
-                    <input
-                        type="password"
-                        id="password"
-                        name="password"
-                        class="form-control"
-                        placeholder="Masukkan password"
-                        required
-                    >
-
-                    <button
-                        type="button"
-                        class="password-toggle"
-                        id="togglePassword"
-                        aria-label="Tampilkan password"
-                    >
-                        {{-- Mata tertutup --}}
-                        <svg
-                            id="eyeClosed"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M13.875 18.825A10.05 10.05 0 0112 19c-5 0-9-7-9-7a16.75 16.75 0 013.375-4.125M6.228 6.228A9.956 9.956 0 0112 5c5 0 9 7 9 7a16.953 16.953 0 01-3.087 3.912M9.88 9.88a3 3 0 104.24 4.24M3 3l18 18"
-                            />
-                        </svg>
-
-                        {{-- Mata terbuka --}}
-                        <svg
-                            id="eyeOpen"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            style="display: none;"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7C20.268 16.057 16.477 19 12 19c-4.477 0-8.268-2.943-9.542-7z"
-                            />
-
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M12 15a3 3 0 100-6 3 3 0 000 6z"
-                            />
-                        </svg>
-                    </button>
-
-                </div>
             </div>
 
-            {{-- Error --}}
-            @if ($errors->any())
-                <div style="
-                    margin-bottom: 20px;
-                    padding: 12px;
-                    background: #fef2f2;
-                    border: 1px solid #fecaca;
-                    border-radius: 10px;
-                    color: #b91c1c;
-                    font-size: 14px;
-                ">
-                    {{ $errors->first() }}
-                </div>
-            @endif
-
-            {{-- Tombol Login --}}
-            <button
-                type="submit"
-                class="login-button"
-            >
+            <button type="button" class="login-button">
                 Masuk
             </button>
 
@@ -328,29 +245,7 @@
         </div>
 
     </div>
+
 </div>
-
-<script>
-    const togglePassword = document.getElementById('togglePassword');
-    const password = document.getElementById('password');
-    const eyeClosed = document.getElementById('eyeClosed');
-    const eyeOpen = document.getElementById('eyeOpen');
-
-    togglePassword.addEventListener('click', function () {
-        const isPassword = password.type === 'password';
-
-        password.type = isPassword ? 'text' : 'password';
-
-        eyeClosed.style.display = isPassword ? 'none' : 'block';
-        eyeOpen.style.display = isPassword ? 'block' : 'none';
-
-        togglePassword.setAttribute(
-            'aria-label',
-            isPassword
-                ? 'Sembunyikan password'
-                : 'Tampilkan password'
-        );
-    });
-</script>
 
 @endsection

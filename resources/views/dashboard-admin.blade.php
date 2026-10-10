@@ -439,109 +439,325 @@
             </a>
         </div>
 
-            {{-- STATISTIK DINAMIS --}}
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-label">Servis Aktif</div>
-            <div class="stat-value">{{ $stats['active'] }}</div>
-            <div class="stat-note">Sedang diproses</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Booking Menunggu</div>
-            <div class="stat-value">{{ $stats['waiting'] }}</div>
-            <div class="stat-note">Perlu ditinjau</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Selesai</div>
-            <div class="stat-value">{{ $stats['completed'] }}</div>
-            <div class="stat-note">Total service</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Jadwal Tersedia</div>
-            <div class="stat-value">{{ $stats['schedules'] }}</div>
-            <div class="stat-note">Slot servis</div>
-        </div>
-    </div>
+        {{-- STATISTIK --}}
+        <div class="stats-grid">
 
-    <div class="dashboard-grid">
-        <div>
-            {{-- DAFTAR ANTREAN DINAMIS --}}
-            <div class="dashboard-card">
-                <div class="card-header">
-                    <h2 class="card-title">Daftar Antrean Tiket Aktif</h2>
+            <div class="stat-card">
+                <div class="stat-label">
+                    Servis Aktif
                 </div>
-                
-                @if($bookings->isEmpty())
-                    <p style="padding: 16px; color: #6b7280; text-align: center;">Belum ada data booking.</p>
-                @else
-                <table class="service-table">
-                    <thead>
-                        <tr>
-                            <th>Service ID</th>
-                            <th>Pelanggan</th>
-                            <th>Perangkat</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($bookings as $booking)
-                        <tr>
-                            <td class="service-id">{{ $booking->service_id_code }}</td>
-                            <td>{{ $booking->customer->name }}</td>
-                            <td>{{ $booking->device->brand }} {{ $booking->device->model }}</td>
-                            <td>
-                                @php
-                                    $statusClass = 'status-waiting';
-                                    $statusText = 'Menunggu';
-                                    
-                                    if($booking->status === 'CONFIRMED') { $statusClass = 'status-process'; $statusText = 'Dikerjakan'; }
-                                    elseif($booking->status === 'COMPLETED') { $statusClass = 'status-done'; $statusText = 'Selesai'; }
-                                    elseif($booking->status === 'REJECTED') { $statusClass = 'status-cancel'; $statusText = 'Ditolak'; }
-                                @endphp
-                                <span class="status {{ $statusClass }}">{{ $statusText }}</span>
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-                @endif
-            </div>
-        </div>
-        
-        <div>
-            {{-- UPDATE STATUS (Akan kita fungsionalkan di Langkah 2) --}}
-            <div class="dashboard-card">
-                <div class="card-header">
-                    <h2 class="card-title">Update Status Service</h2>
+
+                <div class="stat-value">
+                    18
                 </div>
-                <form action="{{ route('admin.booking.update') }}" method="POST" class="status-form">
-                    @csrf
-                    <div>
-                        <label class="form-label-small">Service ID</label>
-                        <select name="service_id_code" class="form-select" required>
-                            @foreach($bookings as $booking)
-                                <option value="{{ $booking->service_id_code }}">{{ $booking->service_id_code }} - {{ $booking->customer->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label class="form-label-small">Status Pengerjaan</label>
-                        <select name="status" class="form-select" required>
-                            <option value="PENDING">Menunggu (Pending)</option>
-                            <option value="CONFIRMED">Sedang Dikerjakan (Confirmed)</option>
-                            <option value="COMPLETED">Selesai (Completed)</option>
-                            <option value="REJECTED">Ditolak (Rejected)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="form-label-small">Catatan</label>
-                        <textarea name="notes" class="form-textarea" rows="4" placeholder="Masukkan catatan..."></textarea>
-                    </div>
-                    <button type="submit" class="save-button">Simpan Perubahan</button>
-                </form>
+
+                <div class="stat-note">
+                    Sedang diproses
+                </div>
             </div>
+
+            <div class="stat-card">
+                <div class="stat-label">
+                    Booking Menunggu
+                </div>
+
+                <div class="stat-value">
+                    7
+                </div>
+
+                <div class="stat-note">
+                    Perlu ditinjau
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">
+                    Selesai
+                </div>
+
+                <div class="stat-value">
+                    4
+                </div>
+
+                <div class="stat-note">
+                    Hari ini
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">
+                    Jadwal Tersedia
+                </div>
+
+                <div class="stat-value">
+                    9
+                </div>
+
+                <div class="stat-note">
+                    Slot servis
+                </div>
+            </div>
+
         </div>
-    </div>
+
+        <div class="dashboard-grid">
+
+            <div>
+
+                {{-- DAFTAR ANTREAN --}}
+                <div class="dashboard-card">
+
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            Daftar Antrean Tiket Aktif
+                        </h2>
+
+                        <a href="#" class="card-link">
+                            Lihat semua
+                        </a>
+                    </div>
+
+                    <table class="service-table">
+                        <thead>
+                            <tr>
+                                <th>Service ID</th>
+                                <th>Pelanggan</th>
+                                <th>Perangkat</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+
+                            <tr>
+                                <td class="service-id">FP-001</td>
+                                <td>Dimas Pratama</td>
+                                <td>ASUS VivoBook</td>
+                                <td>
+                                    <span class="status status-waiting">
+                                        Menunggu
+                                    </span>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td class="service-id">FP-002</td>
+                                <td>Sandi Maulana</td>
+                                <td>HP Notebook</td>
+                                <td>
+                                    <span class="status status-process">
+                                        Dikerjakan
+                                    </span>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td class="service-id">FP-003</td>
+                                <td>Budi Santoso</td>
+                                <td>PC Desktop</td>
+                                <td>
+                                    <span class="status status-process">
+                                        Dikerjakan
+                                    </span>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td class="service-id">FP-004</td>
+                                <td>Fikri Ramadhan</td>
+                                <td>ThinkPad</td>
+                                <td>
+                                    <span class="status status-waiting">
+                                        Menunggu
+                                    </span>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td class="service-id">FP-005</td>
+                                <td>Rian Kurniawan</td>
+                                <td>Acer Predator</td>
+                                <td>
+                                    <span class="status status-done">
+                                        Selesai
+                                    </span>
+                                </td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+
+                </div>
+
+                {{-- LOG / AKTIVITAS --}}
+                <div class="dashboard-card">
+
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            Log Aktivitas
+                        </h2>
+
+                        <a href="#" class="card-link">
+                            Riwayat
+                        </a>
+                    </div>
+
+                    <div class="activity-item">
+                        <div class="activity-dot"></div>
+                        <div class="activity-text">
+                            Booking baru diterima dan masuk ke antrean servis.
+                        </div>
+                    </div>
+
+                    <div class="activity-item">
+                        <div class="activity-dot"></div>
+                        <div class="activity-text">
+                            Status service FP-002 diperbarui menjadi sedang dikerjakan.
+                        </div>
+                    </div>
+
+                    <div class="activity-item">
+                        <div class="activity-dot"></div>
+                        <div class="activity-text">
+                            Jadwal servis diperbarui oleh Admin.
+                        </div>
+                    </div>
+
+                    <div class="activity-item">
+                        <div class="activity-dot"></div>
+                        <div class="activity-text">
+                            Service FP-005 ditandai selesai.
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div>
+
+                {{-- UPDATE STATUS --}}
+                <div class="dashboard-card">
+
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            Update Service
+                        </h2>
+                    </div>
+
+                    <form class="status-form">
+
+                        <div>
+                            <label class="form-label-small">
+                                Service ID
+                            </label>
+
+                            <select class="form-select">
+                                <option>FP-001</option>
+                                <option>FP-002</option>
+                                <option>FP-003</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="form-label-small">
+                                Status Pengerjaan
+                            </label>
+
+                            <select class="form-select">
+                                <option>Waiting</option>
+                                <option>In Progress</option>
+                                <option>Completed</option>
+                                <option>Canceled</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="form-label-small">
+                                Catatan
+                            </label>
+
+                            <textarea
+                                class="form-textarea"
+                                rows="4"
+                                placeholder="Masukkan catatan..."
+                            ></textarea>
+                        </div>
+
+                        <button type="button" class="save-button">
+                            Simpan Perubahan
+                        </button>
+
+                    </form>
+
+                </div>
+
+                {{-- AKTIVITAS TERBARU --}}
+                <div class="dashboard-card">
+
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            Aktivitas Terbaru
+                        </h2>
+                    </div>
+
+                    <div class="update-list">
+
+                        <div class="update-item">
+                            <div class="update-top">
+                                <div class="update-name">
+                                    Dimas Pratama
+                                </div>
+
+                                <div class="update-time">
+                                    10:24
+                                </div>
+                            </div>
+
+                            <div class="update-text">
+                                Booking service baru.
+                            </div>
+                        </div>
+
+                        <div class="update-item">
+                            <div class="update-top">
+                                <div class="update-name">
+                                    Sandi Maulana
+                                </div>
+
+                                <div class="update-time">
+                                    09:45
+                                </div>
+                            </div>
+
+                            <div class="update-text">
+                                Status servis diperbarui.
+                            </div>
+                        </div>
+
+                        <div class="update-item">
+                            <div class="update-top">
+                                <div class="update-name">
+                                    Budi Santoso
+                                </div>
+
+                                <div class="update-time">
+                                    09:12
+                                </div>
+                            </div>
+
+                            <div class="update-text">
+                                Data perangkat diperbarui.
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
 
     </section>
 

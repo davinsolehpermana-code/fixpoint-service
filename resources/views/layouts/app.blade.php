@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>
-        @yield('title', 'FixPoint Service')
-    </title>
+    <title>FixPoint Service - @yield('title', 'Beranda')</title>
 
     <style>
         * {
@@ -17,8 +15,9 @@
 
         body {
             font-family: Arial, Helvetica, sans-serif;
-            background-color: #f8fafc;
+            background: #f7f9fc;
             color: #1f2937;
+            line-height: 1.6;
         }
 
         a {
@@ -26,96 +25,114 @@
             color: inherit;
         }
 
-        .navbar {
-            width: 100%;
-            background-color: #ffffff;
-            border-bottom: 1px solid #e5e7eb;
+        .container {
+            width: min(1180px, 92%);
+            margin: 0 auto;
         }
 
-        .navbar-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 18px 24px;
+        /* NAVBAR */
+        .navbar {
+            background: #ffffff;
+            border-bottom: 1px solid #e5e7eb;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
 
+        .navbar-inner {
+            min-height: 72px;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 24px;
         }
 
         .brand {
             font-size: 20px;
-            font-weight: 700;
-            color: #111827;
+            font-weight: 800;
+            color: #2563eb;
+            white-space: nowrap;
         }
 
         .brand span {
-            color: #2563eb;
+            color: #111827;
         }
 
         .nav-menu {
             display: flex;
             align-items: center;
             gap: 24px;
+            list-style: none;
         }
 
-        .nav-link {
-            font-size: 14px;
+        .nav-menu a {
             color: #4b5563;
+            font-size: 14px;
+            font-weight: 600;
             transition: 0.2s;
         }
 
-        .nav-link:hover {
+        .nav-menu a:hover {
             color: #2563eb;
         }
 
         .nav-button {
-            padding: 9px 16px;
-            border-radius: 7px;
-            background-color: #2563eb;
-            color: #ffffff;
-            font-size: 14px;
-            border: none;
-            cursor: pointer;
+            background: #2563eb;
+            color: #ffffff !important;
+            padding: 10px 16px;
+            border-radius: 8px;
         }
 
         .nav-button:hover {
-            background-color: #1d4ed8;
+            background: #1d4ed8;
         }
 
-        .main-content {
+        /* MAIN */
+        main {
             min-height: calc(100vh - 140px);
-            padding: 30px 24px;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+        .page-content {
+            padding: 32px 0;
         }
 
+        /* FOOTER */
         .footer {
+            background: #ffffff;
             border-top: 1px solid #e5e7eb;
-            background-color: #ffffff;
-            padding: 20px 24px;
-            text-align: center;
+            padding: 22px 0;
+            margin-top: 40px;
+        }
+
+        .footer-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .footer-text {
             color: #6b7280;
             font-size: 13px;
         }
 
+        /* RESPONSIVE */
         @media (max-width: 768px) {
-            .navbar-container {
-                padding: 16px;
+            .navbar-inner {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 16px 0;
             }
 
             .nav-menu {
-                gap: 12px;
+                width: 100%;
+                flex-wrap: wrap;
+                gap: 14px;
             }
 
-            .nav-link {
-                font-size: 13px;
-            }
-
-            .main-content {
-                padding: 24px 16px;
+            .footer-inner {
+                flex-direction: column;
+                align-items: flex-start;
             }
         }
     </style>
@@ -125,58 +142,64 @@
 
 <body>
 
-    <header class="navbar">
-        <div class="navbar-container">
+    <nav class="navbar">
+        <div class="container navbar-inner">
 
-            <a href="{{ url('/') }}" class="brand">
-                FIXPOINT <span>SERVICE</span>
+            <a href="/" class="brand">
+                FixPoint <span>Service</span>
             </a>
 
-            <nav class="nav-menu">
+            <ul class="nav-menu">
+                <li>
+                    <a href="/">Beranda</a>
+                </li>
 
-                <a href="{{ url('/') }}" class="nav-link">
-                    Beranda
-                </a>
+                <li>
+                    <a href="/ketersediaan-jadwal">
+                        Ketersediaan Jadwal
+                    </a>
+                </li>
 
-                <a href="{{ url('/ketersediaan-jadwal') }}" class="nav-link">
-                    Ketersediaan Jadwal
-                </a>
+                <li>
+                    <a href="/booking">
+                        Booking Service
+                    </a>
+                </li>
 
-                <a href="{{ url('/booking') }}" class="nav-link">
-                    Booking
-                </a>
+                <li>
+                    <a href="/cek-status">
+                        Cek Status
+                    </a>
+                </li>
 
-                <a href="{{ url('/cek-status') }}" class="nav-link">
-                    Cek Status
-                </a>
-
-                <a href="{{ route('login') }}" class="nav-button">
-                    Login
-                </a>
-
-            </nav>
+                <li>
+                    <a href="/login" class="nav-button">
+                        Masuk
+                    </a>
+                </li>
+            </ul>
 
         </div>
-    </header>
+    </nav>
 
-
-    <main class="main-content">
-        <div class="container">
-
+    <main>
+        <div class="container page-content">
             @yield('content')
-
         </div>
     </main>
 
-
     <footer class="footer">
-        <p>
-            &copy; {{ date('Y') }} FixPoint Service. All rights reserved.
-        </p>
+        <div class="container footer-inner">
+            <div class="footer-text">
+                © 2026 FixPoint Service
+            </div>
+
+            <div class="footer-text">
+                Booking & Manajemen Jasa Servis Laptop dan PC
+            </div>
+        </div>
     </footer>
 
-
     @stack('scripts')
-
 </body>
 </html>
