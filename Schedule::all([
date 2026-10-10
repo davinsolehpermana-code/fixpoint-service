@@ -1,0 +1,11 @@
+[90m= [39m[34;4mApp\Models\Schedule[39;24m {#7423
+    [34mschedule_date[39m: [32m"[39m[32m2026-10-10[39m[32m"[39m,
+    [34mstart_time[39m: [32m"[39m[32m09:00:00[39m[32m"[39m,
+    [34mend_time[39m: [32m"[39m[32m10:00:00[39m[32m"[39m,
+    [34mmax_booking[39m: [35m3[39m,
+    [34mcurrent_booking[39m: [35m0[39m,
+    [34mstatus[39m: [32m"[39m[32mAVAILABLE[39m[32m"[39m,
+    [34mupdated_at[39m: [32m"[39m[32m2026-10-09 07:38:19[39m[32m"[39m,
+    [34mcreated_at[39m: [32m"[39m[32m2026-10-09 07:38:19[39m[32m"[39m,
+    [34mschedule_id[39m: [35m1[39m,
+  }
