@@ -9,13 +9,9 @@ class User extends Authenticatable
 {
     use Notifiable;
 
-    protected $table = 'users';
-
-    protected $primaryKey = 'user_id';
-
-    public $incrementing = true;
-
-    protected $keyType = 'int';
+    // Jika primary key di database kamu 'user_id' (sesuai ERD), biarkan baris ini. 
+    // Jika 'id' (bawaan Laravel), hapus baris ini.
+    protected $primaryKey = 'user_id'; 
 
     protected $fillable = [
         'email',
@@ -25,13 +21,9 @@ class User extends Authenticatable
 
     protected $hidden = [
         'password',
-        'remember_token',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'password' => 'hashed',
-        ];
-    }
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+    ];
 }

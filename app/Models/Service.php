@@ -14,4 +14,9 @@ class Service extends Model
         'estimated_price',
         'is_active',
     ];
+
+    protected $casts = [
+        'estimated_price' => 'decimal:2',
+        'is_active' => 'boolean',
+    ];
 }
