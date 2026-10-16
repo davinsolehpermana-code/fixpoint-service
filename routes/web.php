@@ -182,6 +182,6 @@ Route::middleware(['auth', 'role:ADMIN'])->group(function () {
 */
 Route::middleware(['auth', 'role:PEMILIK_USAHA'])->group(function () {
     Route::get('/dashboard-pemilik', function () {
-        return view('dashboard-pemilik');
-    })->name('pemilik.dashboard');
+    return view('pemilik.dashboard-pemilik');
+})->name('pemilik.dashboard');
 });

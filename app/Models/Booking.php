@@ -4,8 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use App\Models\Schedule;
+use App\Models\Booking;
 
 class Booking extends Model
+
 {
     protected $primaryKey = 'booking_id';
 
@@ -134,4 +137,29 @@ class Booking extends Model
 
         return back()->with('success', 'Status dan biaya berhasil diupdate.');
     }
+
+
+public function store(Request $request)
+{
+    // Validasi input awal...
+    $request->validate([
+        'schedule_id' => 'required|exists:schedules,schedule_id',
+        // ... validasi lainnya
+    ]);
+
+    // Ambil data jadwal dengan kuncian database untuk mencegah race condition
+    $schedule = Schedule::where('schedule_id', $request->schedule_id)->lockForUpdate()->first();
+
+    // Hitung jumlah booking yang aktif (selain dibatalkan atau ditolak)
+    $activeBookingsCount = Booking::where('schedule_id', $request->schedule_id)
+        ->whereNotIn('status', ['CANCELLED', 'REJECTED'])
+        ->count();
+
+    // Cek apakah slot sudah penuh
+    if ($activeBookingsCount >= $schedule->max_booking) {
+        return back()->withInput()->with('error', 'Maaf, slot pada jadwal tersebut sudah habis. Silakan pilih jadwal atau tanggal lain.');
+    }
+
+    // ... Lanjutkan proses simpan database & transaksi Anda ...
+}
 }

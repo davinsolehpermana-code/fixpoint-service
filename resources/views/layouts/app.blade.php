@@ -36,12 +36,23 @@
             gap: 24px;
         }
 
-        .nav-logo {
-            font-size: 20px;
-            font-weight: 800;
-            color: #2563eb;
-            letter-spacing: -0.5px;
-        }
+        
+.nav-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+}
+
+.logo-image {
+    height: 48px;
+    width: 48px;
+    object-fit: cover;
+    object-position: center;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
 
         /* Desktop Menu */
         .nav-menu {
@@ -184,7 +195,14 @@
     {{-- NAVBAR --}}
     <nav class="navbar">
         <div class="nav-container">
-            <a href="{{ route('home') }}" class="nav-logo">FixPoint Service</a>
+          
+<a href="{{ route('home') }}" class="nav-logo">
+    <img src="{{ asset('images/logo.fixpoint.jpeg') }}"
+         alt="Logo FixPoint Service"
+         class="logo-image">
+    <span>FixPoint Service</span>
+</a>
+
             
             {{-- Burger Button --}}
             <button class="nav-burger" id="navBurger" type="button" aria-label="Toggle menu" aria-controls="navMenu" aria-expanded="false">

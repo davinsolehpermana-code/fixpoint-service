@@ -72,7 +72,7 @@ class BookingController extends Controller
 
             // Validasi ulang ketersediaan slot (S2-02: Core Business Flow)
             if (!$schedule || $schedule->status !== 'AVAILABLE' || $schedule->current_booking >= $schedule->max_booking) {
-                throw new Exception('Maaf, jadwal yang Anda pilih sudah penuh atau tidak tersedia. Silakan pilih jadwal lain.');
+                return back()->withInput()->with('error', 'Maaf, jadwal yang Anda pilih sudah penuh atau tidak tersedia. Silakan pilih jadwal lain.');
             }
 
             // -------------------------------------------------
@@ -191,6 +191,7 @@ class BookingController extends Controller
             'status.in' => 'Status yang dipilih tidak valid.',
         ]);
         
+
         // Cari booking berdasarkan Service ID
         $booking = Booking::where('service_id_code', $validated['service_id_code'])->firstOrFail();
 
