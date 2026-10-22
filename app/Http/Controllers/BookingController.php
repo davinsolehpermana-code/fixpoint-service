@@ -61,7 +61,7 @@ class BookingController extends Controller
         // Jika salah satu langkah gagal, SEMUA dibatalkan (ROLLBACK)
         // =====================================================
         return DB::transaction(function () use ($validated) {
-            
+
             // -------------------------------------------------
             // LANGKAH 1: KUNCI JADWAL (Anti Double Booking)
             // lockForUpdate() mencegah race condition
@@ -78,12 +78,12 @@ class BookingController extends Controller
             // -------------------------------------------------
             // LANGKAH 2: CARI LAYANAN
             // -------------------------------------------------
-            $serviceName = $validated['service'] === 'laptop' 
-                ? 'Servis Laptop' 
+            $serviceName = $validated['service'] === 'laptop'
+                ? 'Servis Laptop'
                 : 'Servis PC Desktop';
-            
+
             $service = Service::where('name', $serviceName)->first();
-            
+
             if (!$service) {
                 throw new Exception('Layanan tidak ditemukan di sistem. Silakan hubungi admin.');
             }
@@ -93,7 +93,7 @@ class BookingController extends Controller
             // Mencegah duplikasi customer dengan nomor telepon sama
             // -------------------------------------------------
             $customer = Customer::where('phone_number', $validated['telepon'])->first();
-            
+
             if (!$customer) {
                 $customer = Customer::create([
                     'name' => $validated['nama'],
@@ -117,9 +117,9 @@ class BookingController extends Controller
             // Format: FP-YYYYMMDD-XXXXX (contoh: FP-20261011-ABC12)
             // -------------------------------------------------
             do {
-                $serviceIdCode = 'FP-' 
-                    . now()->format('Ymd') 
-                    . '-' 
+                $serviceIdCode = 'FP-'
+                    . now()->format('Ymd')
+                    . '-'
                     . Str::upper(Str::random(5));
             } while (Booking::where('service_id_code', $serviceIdCode)->exists());
 
@@ -135,7 +135,7 @@ class BookingController extends Controller
                 'handled_by' => null,
                 'booking_date' => now()->toDateString(),
                 'status' => 'PENDING',
-                'notes' => $validated['keluhan'],
+                'notes' => null,
             ]);
 
             // -------------------------------------------------
@@ -178,7 +178,7 @@ class BookingController extends Controller
      */
     public function updateBookingStatus(Request $request)
     {
-       
+
         // S2-05: Validasi ketat untuk update status
         $validated = $request->validate([
             'service_id_code' => 'required|exists:bookings,service_id_code',
@@ -190,7 +190,7 @@ class BookingController extends Controller
             'amount.max' => 'Total biaya tidak boleh lebih dari Rp 99.999.999,99',
             'status.in' => 'Status yang dipilih tidak valid.',
         ]);
-        
+
 
         // Cari booking berdasarkan Service ID
         $booking = Booking::where('service_id_code', $validated['service_id_code'])->firstOrFail();

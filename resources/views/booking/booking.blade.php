@@ -871,87 +871,49 @@
         </form>
 
 
-
         <script>
             const namaInput = document.getElementById('nama');
-
             const teleponInput = document.getElementById('telepon');
-
             const perangkatInput = document.getElementById('jenis_perangkat');
-
             const modelInput = document.getElementById('merek_model');
-
             const keluhanInput = document.getElementById('keluhan');
-
             const scheduleInput = document.getElementById('schedule_id');
-
             const paymentMethodInput = document.getElementById('payment_method');
 
-
-
             const summaryNama = document.getElementById('summary-nama');
-
             const summaryTelepon = document.getElementById('summary-telepon');
-
             const summaryPerangkat = document.getElementById('summary-perangkat');
-
             const summaryModel = document.getElementById('summary-model');
-
             const summaryLayanan = document.getElementById('summary-layanan');
-
             const summaryJadwal = document.getElementById('summary-jadwal');
-
             const summaryKeluhan = document.getElementById('summary-keluhan');
             const summaryStatusJadwal = document.getElementById('summary-status-jadwal');
             const summaryPaymentMethod = document.getElementById('summary-payment-method');
 
-
-
             let updateTimeout;
 
             function updateSummary() {
-
                 clearTimeout(updateTimeout);
-
                 updateTimeout = setTimeout(() => {
-
                     summaryNama.textContent = namaInput.value.trim() || '-';
-
                     summaryTelepon.textContent = teleponInput.value.trim() || '-';
-
                     summaryPerangkat.textContent = perangkatInput.value || '-';
-
                     summaryModel.textContent = modelInput.value.trim() || '-';
-
                     summaryKeluhan.textContent = keluhanInput.value.trim() || '-';
-                    summaryPaymentMethod.textContent = paymentMethodInput.value === 'CASH' ?
-                        'Cash / Tunai' :
-                        (paymentMethodInput.value === 'QRIS' ? 'QRIS' : '-');
-
-
+                    summaryPaymentMethod.textContent = paymentMethodInput.value === 'CASH' ? 'Cash / Tunai' : (
+                        paymentMethodInput.value === 'QRIS' ? 'QRIS' : '-');
 
                     const selectedService = document.querySelector('input[name="service"]:checked');
-
                     if (selectedService) {
-
                         summaryLayanan.textContent = selectedService.dataset.serviceName;
-
                     } else {
-
                         summaryLayanan.textContent = '-';
-
                     }
 
-
-
                     const selectedSchedule = scheduleInput.options[scheduleInput.selectedIndex];
-
                     if (selectedSchedule && selectedSchedule.value) {
-
                         const date = selectedSchedule.dataset.date;
-
                         const time = selectedSchedule.dataset.time;
-
                         const scheduleText = date + ' - ' + time;
                         summaryJadwal.textContent = scheduleText;
                         summaryStatusJadwal.textContent = 'Tersedia';
@@ -962,52 +924,37 @@
                         summaryStatusJadwal.textContent = hasSchedules ? 'Belum dipilih' : 'Tidak tersedia';
                         summaryStatusJadwal.style.color = hasSchedules ? '#6b7280' : '#dc2626';
                     }
-
                 }, 50);
-
             }
 
-
-
             if (namaInput) namaInput.addEventListener('input', updateSummary);
-
             if (teleponInput) teleponInput.addEventListener('input', updateSummary);
-
             if (perangkatInput) perangkatInput.addEventListener('change', updateSummary);
-
             if (modelInput) modelInput.addEventListener('input', updateSummary);
-
             if (keluhanInput) keluhanInput.addEventListener('input', updateSummary);
-
             if (scheduleInput) scheduleInput.addEventListener('change', updateSummary);
-
             if (paymentMethodInput) paymentMethodInput.addEventListener('change', updateSummary);
 
-
-
             document.querySelectorAll('input[name="service"]').forEach(function(radio) {
-
                 radio.addEventListener('change', updateSummary);
-
             });
-
-
 
             updateSummary();
+        
 
 
-            // 🔒 TAMBAHAN SCRIPT UNTUK MENCEGAH DOUBLE SUBMIT / KLIK BERULANG KALI
-            document.getElementById('bookingForm').addEventListener('submit', function(e) {
-                const submitBtn = document.getElementById('submitBtn');
+        // 🔒 TAMBAHAN SCRIPT UNTUK MENCEGAH DOUBLE SUBMIT / KLIK BERULANG KALI
+        document.getElementById('bookingForm').addEventListener('submit', function(e) {
+        const submitBtn = document.getElementById('submitBtn');
 
-                // Nonaktifkan tombol agar tidak bisa diklik dua kali
-                submitBtn.disabled = true;
+        // Nonaktifkan tombol agar tidak bisa diklik dua kali
+        submitBtn.disabled = true;
 
-                // Ubah tampilan tombol menjadi status loading
-                submitBtn.style.opacity = '0.7';
-                submitBtn.style.cursor = 'not-allowed';
-                submitBtn.innerText = 'Memproses Booking...';
-            });
+        // Ubah tampilan tombol menjadi status loading
+        submitBtn.style.opacity = '0.7';
+        submitBtn.style.cursor = 'not-allowed';
+        submitBtn.innerText = 'Memproses Booking...';
+        });
         </script>
 
 

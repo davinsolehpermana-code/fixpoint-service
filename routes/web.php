@@ -1,4 +1,4 @@
-<?php
+<?php 
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
@@ -51,7 +51,10 @@ Route::post('/booking', [BookingController::class, 'store'])->name('booking.stor
 // Cek Status Service
 Route::get('/cek-status', [StatusController::class, 'index'])->name('cek-status');
 Route::get('/cek-status/result', [StatusController::class, 'show'])->name('cek-status.show');
-Route::post('/cek-status/{code}/cancel', [StatusController::class, 'cancel'])->name('cek-status.cancel'); // 👈 Tambahkan route ini
+
+// ✅ FITUR BARU YANG KAMU TAMBAHKAN (DIPERTAHANKAN)
+Route::post('/cek-status/{code}/cancel', [StatusController::class, 'cancel'])->name('cek-status.cancel');
+Route::post('/cek-status/upload-proof', [StatusController::class, 'uploadProof'])->name('cek-status.upload-proof');
 
 /*
 |--------------------------------------------------------------------------
@@ -69,13 +72,13 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 */
 Route::middleware(['auth', 'role:ADMIN'])->group(function () {
 
-    // Dashboard Admin
+    // Dashboard Admin (Dipertahankan tambahan status CANCELLED)
     Route::get('/dashboard-admin', function () {
-        $bookings = \App\Models\Booking::with(['customer', 'device', 'service', 'schedule'])
+        $bookings = \App\Models\Booking::with(['customer', 'device', 'service', 'schedule', 'payment'])
             ->orderBy('created_at', 'desc')
             ->get();
         $stats = [
-            'active'    => $bookings->whereIn('status', ['PENDING', 'WAITING_VERIFICATION', 'CONFIRMED','CANCELLED'])->count(),
+            'active'    => $bookings->whereIn('status', ['PENDING', 'WAITING_VERIFICATION', 'CONFIRMED', 'CANCELLED'])->count(),
             'waiting'   => $bookings->where('status', 'PENDING')->count(),
             'completed' => $bookings->where('status', 'COMPLETED')->count(),
             'schedules' => Schedule::where('status', 'AVAILABLE')->count(),
@@ -83,7 +86,7 @@ Route::middleware(['auth', 'role:ADMIN'])->group(function () {
         return view('admin.dashboard-admin', compact('bookings', 'stats'));
     })->name('admin.dashboard');
 
-    // ✅ 1. UPDATE STATUS & INPUT BIAYA (Simpan harga + metode pembayaran)
+    // ✅ 1. UPDATE STATUS & INPUT BIAYA
     Route::post('/admin/booking/update', function (\Illuminate\Http\Request $request) {
         $request->validate([
             'service_id_code'  => 'required|exists:bookings,service_id_code',
@@ -103,10 +106,16 @@ Route::middleware(['auth', 'role:ADMIN'])->group(function () {
 
         // Simpan biaya & metode ke tabel payments
         if ($request->filled('amount') || $request->filled('payment_method')) {
-            $payment = \App\Models\Payment::firstOrNew(['customer_id' => $booking->customer_id]);
+            // 🔧 PERBAIKAN FATAL: Gunakan booking_id, BUKAN customer_id agar tidak menimpa data booking lain
+            $payment = \App\Models\Payment::firstOrNew(['booking_id' => $booking->booking_id]);
+            
+            $payment->booking_id = $booking->booking_id;   // Pastikan terikat ke booking ini
+            $payment->customer_id = $booking->customer_id; // Pastikan data customer tetap tercatat
+            
             if ($request->filled('amount')) $payment->amount = $request->amount;
             if ($request->filled('payment_method')) $payment->payment_method = $request->payment_method;
             if (!$payment->payment_status) $payment->payment_status = 'UNPAID';
+            
             $payment->service_record_id = null;
             $payment->processed_by = auth()->id();
             $payment->payment_date = now();
@@ -117,7 +126,6 @@ Route::middleware(['auth', 'role:ADMIN'])->group(function () {
     })->name('admin.booking.update');
 
     // ✅ 2. VERIFIKASI / TERIMA (HANYA ubah status booking, JANGAN ubah payment!)
-    // INI YANG DIPERBAIKI - tidak ada lagi kode yang ubah payment jadi PAID
     Route::put('/admin/booking/{id}/verify', function ($id) {
         $booking = \App\Models\Booking::findOrFail($id);
 
@@ -125,7 +133,6 @@ Route::middleware(['auth', 'role:ADMIN'])->group(function () {
             return back()->with('error', 'Booking tidak bisa diverifikasi.');
         }
 
-        // HANYA ubah status booking menjadi CONFIRMED
         $booking->update(['status' => 'CONFIRMED']);
 
         return back()->with('success', 'Booking diterima. Status diubah menjadi Sedang Dikerjakan.');
@@ -142,11 +149,18 @@ Route::middleware(['auth', 'role:ADMIN'])->group(function () {
     Route::put('/admin/booking/{id}/mark-paid', function ($id) {
         $booking = \App\Models\Booking::findOrFail($id);
 
-        $payment = \App\Models\Payment::firstOrNew(['customer_id' => $booking->customer_id]);
+        // 🔧 PERBAIKAN FATAL: Gunakan booking_id, BUKAN customer_id
+        $payment = \App\Models\Payment::firstOrNew(['booking_id' => $booking->booking_id]);
+        
+        $payment->booking_id = $booking->booking_id;
+        $payment->customer_id = $booking->customer_id;
+        
         $payment->payment_status = 'PAID';
         $payment->payment_date = now();
+        
         if (!$payment->payment_method) $payment->payment_method = 'CASH';
         if (!$payment->amount) $payment->amount = 0; // Mencegah error default value
+        
         $payment->processed_by = auth()->id();
         $payment->save();
 
@@ -182,6 +196,6 @@ Route::middleware(['auth', 'role:ADMIN'])->group(function () {
 */
 Route::middleware(['auth', 'role:PEMILIK_USAHA'])->group(function () {
     Route::get('/dashboard-pemilik', function () {
-    return view('pemilik.dashboard-pemilik');
-})->name('pemilik.dashboard');
+        return view('pemilik.dashboard-pemilik');
+    })->name('pemilik.dashboard');
 });

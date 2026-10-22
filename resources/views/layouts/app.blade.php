@@ -1,17 +1,37 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'FixPoint Service')</title>
-    
+
     <style>
         /* --- RESET & BASE --- */
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        body { background-color: #f8fafc; color: #111827; line-height: 1.6; padding-top: 70px; /* Space for fixed navbar */ }
-        a { text-decoration: none; color: inherit; }
-        ul { list-style: none; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f8fafc;
+            color: #111827;
+            line-height: 1.6;
+            padding-top: 70px;
+            /* Space for fixed navbar */
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        ul {
+            list-style: none;
+        }
 
         /* --- NAVBAR STYLES --- */
         .navbar {
@@ -22,7 +42,7 @@
             background: #ffffff;
             border-bottom: 1px solid #e5e7eb;
             z-index: 1000;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
         }
 
         .nav-container {
@@ -36,22 +56,22 @@
             gap: 24px;
         }
 
-        
-.nav-logo {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    text-decoration: none;
-}
 
-.logo-image {
-    height: 48px;
-    width: 48px;
-    object-fit: cover;
-    object-position: center;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
+        .nav-logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+
+        .logo-image {
+            height: 48px;
+            width: 48px;
+            object-fit: cover;
+            object-position: center;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
 
 
         /* Desktop Menu */
@@ -69,7 +89,9 @@
             transition: color 0.2s;
         }
 
-        .nav-link:hover { color: #2563eb; }
+        .nav-link:hover {
+            color: #2563eb;
+        }
 
         .btn-logout {
             background: #fee2e2;
@@ -82,7 +104,10 @@
             cursor: pointer;
             transition: background 0.2s;
         }
-        .btn-logout:hover { background: #fecaca; }
+
+        .btn-logout:hover {
+            background: #fecaca;
+        }
 
         /* Burger Button (Hidden on Desktop) */
         .nav-burger {
@@ -118,7 +143,9 @@
                 padding-top: 64px;
             }
 
-            .nav-burger { display: flex; }
+            .nav-burger {
+                display: flex;
+            }
 
             .nav-menu {
                 position: fixed;
@@ -133,7 +160,7 @@
                 padding: 20px;
                 gap: 0;
                 border-bottom: 1px solid #e5e7eb;
-                box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+                box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
                 transform: translateY(-8px);
                 opacity: 0;
                 visibility: hidden;
@@ -153,9 +180,12 @@
                 border-bottom: 1px solid #f3f4f6;
             }
 
-            .nav-menu li:last-child { border-bottom: none; }
+            .nav-menu li:last-child {
+                border-bottom: none;
+            }
 
-            .nav-link, .btn-logout {
+            .nav-link,
+            .btn-logout {
                 display: block;
                 width: 100%;
                 padding: 16px 0;
@@ -171,9 +201,11 @@
             .nav-burger.active span:nth-child(1) {
                 transform: translateY(8px) rotate(45deg);
             }
+
             .nav-burger.active span:nth-child(2) {
                 opacity: 0;
             }
+
             .nav-burger.active span:nth-child(3) {
                 transform: translateY(-8px) rotate(-45deg);
             }
@@ -190,48 +222,74 @@
         }
     </style>
 </head>
+
 <body>
 
     {{-- NAVBAR --}}
     <nav class="navbar">
         <div class="nav-container">
-          
-<a href="{{ route('home') }}" class="nav-logo">
-    <img src="{{ asset('images/logo.fixpoint.jpeg') }}"
-         alt="Logo FixPoint Service"
-         class="logo-image">
-    <span>FixPoint Service</span>
-</a>
 
-            
+            <a href="{{ route('home') }}" class="nav-logo">
+                <img src="{{ asset('images/logo.fixpoint.jpeg') }}" alt="Logo FixPoint Service" class="logo-image">
+                <span>FixPoint Service</span>
+            </a>
+
+
             {{-- Burger Button --}}
-            <button class="nav-burger" id="navBurger" type="button" aria-label="Toggle menu" aria-controls="navMenu" aria-expanded="false">
+            <button class="nav-burger" id="navBurger" type="button" aria-label="Toggle menu" aria-controls="navMenu"
+                aria-expanded="false">
                 <span></span>
                 <span></span>
                 <span></span>
             </button>
 
             {{-- Menu Links --}}
+            {{-- Menu Links --}}
             <ul class="nav-menu" id="navMenu">
-                <li><a href="{{ route('home') }}" class="nav-link">Beranda</a></li>
-                <li><a href="{{ route('ketersediaan-jadwal') }}" class="nav-link">Jadwal</a></li>
-                <li><a href="{{ route('booking') }}" class="nav-link">Booking</a></li>
-                <li><a href="{{ route('cek-status') }}" class="nav-link">Cek Status</a></li>
-                
+
                 @auth
-                    @if(auth()->user()->role === 'ADMIN')
-                        <li><a href="{{ route('admin.dashboard') }}" class="nav-link">Dashboard Admin</a></li>
-                    @elseif(auth()->user()->role === 'PEMILIK_USAHA')
-                        <li><a href="{{ route('pemilik.dashboard') }}" class="nav-link">Dashboard Pemilik</a></li>
+                    {{-- MENU ADMIN --}}
+                    @if (auth()->user()->role === 'ADMIN')
+                        <li>
+                            <a href="{{ route('admin.dashboard') }}" class="nav-link">
+                                Dashboard Admin
+                            </a>
+                        </li>
+
+                        {{-- MENU PEMILIK USAHA --}}
+                    @elseif (auth()->user()->role === 'PEMILIK_USAHA')
+                        <li>
+                            <a href="{{ route('pemilik.dashboard') }}" class="nav-link">
+                                Dashboard Pemilik
+                            </a>
+                        </li>
                     @endif
-                    
+
+                    {{-- LOGOUT --}}
                     <li>
                         <form action="{{ route('logout') }}" method="POST">
                             @csrf
-                            <button type="submit" class="btn-logout">Logout</button>
+                            <button type="submit" class="btn-logout">
+                                Logout
+                            </button>
                         </form>
                     </li>
+                @else
+                    {{-- MENU PUBLIK UNTUK PELANGGAN --}}
+                    <li>
+                        <a href="{{ route('home') }}" class="nav-link">Beranda</a>
+                    </li>
+                    <li>
+                        <a href="{{ route('ketersediaan-jadwal') }}" class="nav-link">Jadwal</a>
+                    </li>
+                    <li>
+                        <a href="{{ route('booking') }}" class="nav-link">Booking</a>
+                    </li>
+                    <li>
+                        <a href="{{ route('cek-status') }}" class="nav-link">Cek Status</a>
+                    </li>
                 @endauth
+
             </ul>
         </div>
     </nav>
@@ -242,7 +300,8 @@
     </main>
 
     {{-- FOOTER (Opsional) --}}
-    <footer style="text-align: center; padding: 30px 20px; color: #6b7280; font-size: 13px; border-top: 1px solid #e5e7eb; margin-top: 40px;">
+    <footer
+        style="text-align: center; padding: 30px 20px; color: #6b7280; font-size: 13px; border-top: 1px solid #e5e7eb; margin-top: 40px;">
         &copy; {{ date('Y') }} FixPoint Service. All rights reserved.
     </footer>
 
@@ -270,4 +329,5 @@
     </script>
 
 </body>
+
 </html>

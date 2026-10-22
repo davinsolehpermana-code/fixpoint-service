@@ -119,4 +119,44 @@ class StatusController extends Controller
             return back()->with('success', 'Booking berhasil dibatalkan.');
         });
     }
+
+    /**
+ * Upload bukti pembayaran dari customer (S2-05: Validasi File)
+ */
+public function uploadProof(Request $request)
+{
+    // 1. Validasi file sesuai SOP (Maks 2MB, hanya gambar)
+    $request->validate([
+        'service_id_code' => 'required|exists:bookings,service_id_code',
+        'payment_proof'   => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
+    ], [
+        'payment_proof.required' => 'Wajib melampirkan foto bukti pembayaran.',
+        'payment_proof.image'    => 'File harus berupa gambar.',
+        'payment_proof.mimes'    => 'Format gambar hanya boleh JPG, JPEG, PNG, atau WEBP.',
+        'payment_proof.max'      => 'Ukuran file maksimal 2MB.',
+    ]);
+
+    // 2. Cari data booking & payment
+    $booking = \App\Models\Booking::where('service_id_code', $request->service_id_code)->firstOrFail();
+    $payment = \App\Models\Payment::where('booking_id', $booking->booking_id)->first();
+
+    if (!$payment) {
+        return back()->with('error', 'Data pembayaran tidak ditemukan.');
+    }
+
+    // 3. Simpan file ke storage
+    if ($request->hasFile('payment_proof')) {
+        $path = $request->file('payment_proof')->store('payment_proofs', 'public');
+        
+        // 4. Update status payment
+        $payment->update([
+            'payment_proof'   => $path,
+            'payment_status'  => 'WAITING_VERIFICATION', // Menunggu admin verifikasi
+            'payment_date'    => now(),
+            'processed_by'    => null, // Belum diproses admin
+        ]);
+    }
+
+    return back()->with('success', 'Bukti pembayaran berhasil diupload! Menunggu verifikasi admin.');
+}
 }
