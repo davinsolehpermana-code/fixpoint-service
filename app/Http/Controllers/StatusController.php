@@ -4,159 +4,219 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\Payment;
+use App\Models\Schedule;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\View\View;
 
 class StatusController extends Controller
 {
-    // 1. Tampilkan halaman form cek status
-    public function index()
+    /**
+     * Menampilkan halaman pencarian status servis.
+     */
+    public function index(): View
     {
         return view('status.cek-status');
     }
 
-    // 2. Proses pencarian Service ID
-    public function show(Request $request)
+    /**
+     * Mencari booking berdasarkan Service ID dan menampilkan data servis,
+     * catatan servis, serta pembayaran yang terhubung dengan booking tersebut.
+     */
+    public function show(Request $request): View|RedirectResponse
     {
-        $code = $request->input('code');
-        
-        if (!$code) {
-            return back()->with('error', 'Silakan masukkan Service ID.');
-        }
+        $validated = $request->validate([
+            'code' => ['required', 'string', 'max:50'],
+        ], [
+            'code.required' => 'Silakan masukkan Service ID.',
+            'code.max' => 'Service ID tidak valid.',
+        ]);
 
-        $booking = Booking::with(['customer', 'device', 'schedule', 'service'])
+        $code = strtoupper(trim($validated['code']));
+
+        $booking = Booking::query()
+            ->with([
+                'customer',
+                'device',
+                'schedule',
+                'service',
+                'payment',
+            ])
             ->where('service_id_code', $code)
             ->first();
 
         if (!$booking) {
-            return back()->with('error', 'Service ID tidak ditemukan. Silakan periksa kembali kode Anda.');
+            return redirect()
+                ->route('cek-status')
+                ->withInput(['code' => $code])
+                ->with('error', 'Service ID tidak ditemukan. Periksa kembali kode yang Anda masukkan.');
         }
 
-        // Ambil data payment jika ada
-        $payment = $booking->payment;
+        // Ambil catatan servis langsung dari tabel agar halaman tidak bergantung
+        // pada relasi model yang mungkin belum ditambahkan di Booking.php.
+        $serviceRecord = DB::table('service_records')
+            ->where('booking_id', $booking->booking_id)
+            ->orderByDesc('service_record_id')
+            ->first();
 
-        return view('status.cek-status', compact('booking', 'payment'));
-    }
-
-    // 3. Proses Upload Bukti Pembayaran (S2-05 & S2-02)
-    public function upload(Request $request, $code)
-    {
-        // 1. Validasi File & Metode Pembayaran
-        $request->validate([
-            'payment_method' => 'required|in:QRIS,CASH', // ✅ Validasi pilihan QRIS atau CASH
-            'payment_proof'  => 'required|image|mimes:jpeg,png,jpg|max:2048', // Max 2MB
+        return view('status.cek-status', [
+            'booking' => $booking,
+            'payment' => $booking->payment,
+            'serviceRecord' => $serviceRecord,
         ]);
-
-        $booking = Booking::where('service_id_code', $code)->firstOrFail();
-
-        // 2. Cegah upload jika status sudah berubah
-        if ($booking->status !== 'PENDING') {
-            return back()->with('error', 'Booking ini sudah diproses atau sedang diverifikasi.');
-        }
-
-        // 3. Simpan file ke storage/app/public/bukti-bayar
-        $path = $request->file('payment_proof')->store('bukti-bayar', 'public');
-
-        // 4. Simpan ke tabel payments (sesuai ERD Anda)
-        Payment::updateOrCreate(
-            ['booking_id' => $booking->booking_id],
-            [
-                'customer_id'       => $booking->customer_id,
-                'service_record_id' => null, // Belum ada service record (sudah di-nullable via migration)
-                'processed_by'      => null,
-                'amount'            => 0,
-                'payment_method'    => $request->payment_method, // ✅ SEKARANG DINAMIS (Mengambil dari input user)
-                'payment_status'    => 'UNPAID',
-                'payment_proof'     => $path,
-                'payment_date'      => now(),
-            ]
-        );
-
-        // 5. Update status booking jadi menunggu verifikasi
-        $booking->update(['status' => 'WAITING_VERIFICATION']);
-
-        return back()->with('success', 'Bukti pembayaran berhasil diunggah! Menunggu verifikasi Admin.');
     }
 
     /**
-     * Memproses pembatalan booking oleh pelanggan.
-     * 
-     * S2-05: Dual-Layer Validation (Server-side)
-     * S2-06: Database Transaction untuk pembaruan status & kuota jadwal
+     * Membatalkan booking pelanggan yang belum masuk proses diagnosis/pengerjaan.
+     * Slot jadwal dikembalikan dalam transaksi database yang sama.
      */
-    public function cancel(Request $request, $code)
+    public function cancel(Request $request, string $code): RedirectResponse
     {
-        // 1. Validasi Alasan Pembatalan (Server-Side)
-        $request->validate([
-            'cancellation_reason' => 'required|string|max:500',
+        $validated = $request->validate([
+            'cancellation_reason' => ['required', 'string', 'max:500'],
         ], [
             'cancellation_reason.required' => 'Alasan pembatalan wajib diisi.',
             'cancellation_reason.max' => 'Alasan pembatalan maksimal 500 karakter.',
         ]);
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $code) {
-            // 2. Cari booking berdasarkan Service ID
-            $booking = Booking::where('service_id_code', $code)->firstOrFail();
+        $result = DB::transaction(function () use ($validated, $code) {
+            $booking = Booking::query()
+                ->where('service_id_code', strtoupper(trim($code)))
+                ->lockForUpdate()
+                ->firstOrFail();
 
-            // 3. Batasi pembatalan: Hanya status PENDING yang boleh dibatalkan oleh pelanggan
-            if (!in_array($booking->status, ['PENDING', 'WAITING_VERIFICATION'])) {
-                return back()->with('error', 'Booking tidak dapat dibatalkan karena sudah dalam proses pengerjaan atau telah selesai.');
+            if (!in_array($booking->status, ['PENDING', 'WAITING_VERIFICATION'], true)) {
+                return 'Booking tidak dapat dibatalkan karena sudah dikonfirmasi, sedang dikerjakan, atau telah selesai.';
             }
 
-            // 4. Update status dan alasan pembatalan pada booking
             $booking->update([
                 'status' => 'CANCELLED',
-                'cancellation_reason' => $request->cancellation_reason,
+                'cancellation_reason' => $validated['cancellation_reason'],
             ]);
 
-            // 5. Kembalikan slot kuota pada jadwal terkait jika ada
             if ($booking->schedule_id) {
-                $schedule = \App\Models\Schedule::find($booking->schedule_id);
+                $schedule = Schedule::query()
+                    ->where('schedule_id', $booking->schedule_id)
+                    ->lockForUpdate()
+                    ->first();
+
                 if ($schedule && $schedule->current_booking > 0) {
                     $schedule->decrement('current_booking');
                 }
             }
 
-            return back()->with('success', 'Booking berhasil dibatalkan.');
+            return null;
         });
+
+        $redirect = redirect()->route('cek-status.show', ['code' => strtoupper(trim($code))]);
+
+        if ($result !== null) {
+            return $redirect->with('error', $result);
+        }
+
+        return $redirect->with('success', 'Booking berhasil dibatalkan. Slot jadwal telah dikembalikan.');
     }
 
     /**
- * Upload bukti pembayaran dari customer (S2-05: Validasi File)
- */
-public function uploadProof(Request $request)
-{
-    // 1. Validasi file sesuai SOP (Maks 2MB, hanya gambar)
-    $request->validate([
-        'service_id_code' => 'required|exists:bookings,service_id_code',
-        'payment_proof'   => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
-    ], [
-        'payment_proof.required' => 'Wajib melampirkan foto bukti pembayaran.',
-        'payment_proof.image'    => 'File harus berupa gambar.',
-        'payment_proof.mimes'    => 'Format gambar hanya boleh JPG, JPEG, PNG, atau WEBP.',
-        'payment_proof.max'      => 'Ukuran file maksimal 2MB.',
-    ]);
-
-    // 2. Cari data booking & payment
-    $booking = \App\Models\Booking::where('service_id_code', $request->service_id_code)->firstOrFail();
-    $payment = \App\Models\Payment::where('booking_id', $booking->booking_id)->first();
-
-    if (!$payment) {
-        return back()->with('error', 'Data pembayaran tidak ditemukan.');
-    }
-
-    // 3. Simpan file ke storage
-    if ($request->hasFile('payment_proof')) {
-        $path = $request->file('payment_proof')->store('payment_proofs', 'public');
-        
-        // 4. Update status payment
-        $payment->update([
-            'payment_proof'   => $path,
-            'payment_status'  => 'WAITING_VERIFICATION', // Menunggu admin verifikasi
-            'payment_date'    => now(),
-            'processed_by'    => null, // Belum diproses admin
+     * Mengunggah bukti pembayaran QRIS setelah servis selesai dan tagihan tersedia.
+     * Metode pembayaran tidak diubah oleh pelanggan; sistem memakai metode yang
+     * sudah dipilih saat booking.
+     */
+    public function uploadProof(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'service_id_code' => ['required', 'string', 'exists:bookings,service_id_code'],
+            'payment_proof' => ['required', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+        ], [
+            'payment_proof.required' => 'Wajib melampirkan foto bukti pembayaran.',
+            'payment_proof.image' => 'File bukti pembayaran harus berupa gambar.',
+            'payment_proof.mimes' => 'Format gambar hanya boleh JPG, JPEG, PNG, atau WEBP.',
+            'payment_proof.max' => 'Ukuran bukti pembayaran maksimal 2 MB.',
         ]);
+
+        $code = strtoupper(trim($validated['service_id_code']));
+        $newPath = $request->file('payment_proof')->store('payment_proofs', 'public');
+        $oldPath = null;
+
+        try {
+            $result = DB::transaction(function () use ($code, $newPath, &$oldPath) {
+                $booking = Booking::query()
+                    ->where('service_id_code', $code)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ($booking->status !== 'COMPLETED') {
+                    return 'Bukti pembayaran hanya dapat dikirim setelah servis selesai.';
+                }
+
+                $payment = Payment::query()
+                    ->where('booking_id', $booking->booking_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$payment) {
+                    return 'Data pembayaran belum tersedia. Silakan hubungi Admin.';
+                }
+
+                if ($payment->payment_method !== 'QRIS') {
+                    return 'Upload bukti hanya tersedia untuk pembayaran dengan metode QRIS.';
+                }
+
+                if (!is_numeric($payment->amount) || (float) $payment->amount <= 0) {
+                    return 'Tagihan belum ditetapkan. Silakan periksa kembali setelah Admin memperbarui biaya servis.';
+                }
+
+                if ($payment->payment_status === 'PAID') {
+                    return 'Pembayaran sudah dikonfirmasi lunas. Bukti tidak perlu diunggah kembali.';
+                }
+
+                if ($payment->payment_status === 'WAITING_VERIFICATION') {
+                    return 'Bukti pembayaran sebelumnya sedang menunggu verifikasi Admin.';
+                }
+
+                $oldPath = $payment->payment_proof;
+
+                $payment->update([
+                    'payment_proof' => $newPath,
+                    'payment_status' => 'WAITING_VERIFICATION',
+                    'payment_date' => now(),
+                    'processed_by' => null,
+                ]);
+
+                return null;
+            });
+        } catch (\Throwable $exception) {
+            Storage::disk('public')->delete($newPath);
+            throw $exception;
+        }
+
+        if ($result !== null) {
+            Storage::disk('public')->delete($newPath);
+
+            return redirect()
+                ->route('cek-status.show', ['code' => $code])
+                ->with('error', $result);
+        }
+
+        if ($oldPath && $oldPath !== $newPath) {
+            Storage::disk('public')->delete($oldPath);
+        }
+
+        return redirect()
+            ->route('cek-status.show', ['code' => $code])
+            ->with('success', 'Bukti pembayaran berhasil dikirim. Pembayaran sedang menunggu verifikasi Admin.');
     }
 
-    return back()->with('success', 'Bukti pembayaran berhasil diupload! Menunggu verifikasi admin.');
-}
+    /**
+     * Alias kompatibilitas untuk route upload lama, bila masih digunakan.
+     * Metode pembayaran tetap mengikuti pilihan pelanggan saat booking.
+     */
+    public function upload(Request $request, string $code): RedirectResponse
+    {
+        $request->merge(['service_id_code' => $code]);
+
+        return $this->uploadProof($request);
+    }
 }

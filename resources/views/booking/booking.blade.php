@@ -636,137 +636,93 @@
 
 
 
-                    {{-- KATEGORI LAYANAN --}}
-
+                    {{-- KATEGORI LAYANAN DINAMIS DARI TABEL SERVICES --}}
                     <div class="booking-card">
-
                         <h2 class="booking-card-title">Kategori Layanan</h2>
+                        <p class="service-option-text" style="margin: -8px 0 16px;">Pilih layanan yang paling sesuai dengan keluhan perangkat Anda.</p>
 
-                        <div class="service-options">
-
-                            <label class="service-option">
-
-                                <div>
-
-                                    <input type="radio" name="service" value="laptop" data-service-name="Servis Laptop"
-                                        {{ old('service') === 'laptop' ? 'checked' : '' }} required>
-
-                                    <span class="service-option-title">Servis Laptop</span>
-
-                                </div>
-
-                                <p class="service-option-text">Pemeriksaan dan perbaikan laptop.</p>
-
-                            </label>
-
-                            <label class="service-option">
-
-                                <div>
-
-                                    <input type="radio" name="service" value="pc"
-                                        data-service-name="Servis PC Desktop"
-                                        {{ old('service') === 'pc' ? 'checked' : '' }} required>
-
-                                    <span class="service-option-title">Servis PC Desktop</span>
-
-                                </div>
-
-                                <p class="service-option-text">Pemeriksaan dan perbaikan PC desktop.</p>
-
-                            </label>
-
-                        </div>
-
+                        @if ($services->isEmpty())
+                            <div class="alert-error">Belum ada layanan aktif yang tersedia. Silakan hubungi Admin.</div>
+                        @else
+                            <div class="service-options">
+                                @foreach ($services as $service)
+                                    <label class="service-option">
+                                        <div>
+                                            <input
+                                                type="radio"
+                                                name="service_id"
+                                                value="{{ $service->service_id }}"
+                                                data-service-name="{{ $service->name }}"
+                                                {{ (string) old('service_id') === (string) $service->service_id ? 'checked' : '' }}
+                                                required
+                                            >
+                                            <span class="service-option-title">{{ $service->name }}</span>
+                                        </div>
+                                        @if ($service->description)
+                                            <p class="service-option-text">{{ $service->description }}</p>
+                                        @endif
+                                        @if ($service->estimated_price !== null && (float) $service->estimated_price > 0)
+                                            <p class="service-option-text" style="color: #2563eb; font-weight: 700;">
+                                                Estimasi awal: Rp {{ number_format((float) $service->estimated_price, 0, ',', '.') }}
+                                            </p>
+                                        @else
+                                            <p class="service-option-text" style="color: #64748b;">Biaya ditentukan setelah diagnosis.</p>
+                                        @endif
+                                    </label>
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
-
-
 
                     {{-- DETAIL KELUHAN --}}
-
                     <div class="booking-card">
-
                         <h2 class="booking-card-title">Detail Keluhan</h2>
-
                         <div class="form-group">
-
-                            <label class="form-label">Keluhan Perangkat</label>
-
+                            <label class="form-label" for="keluhan">Keluhan Perangkat</label>
                             <textarea name="keluhan" id="keluhan" class="form-control" rows="6"
                                 placeholder="Jelaskan masalah pada perangkat..." required>{{ old('keluhan') }}</textarea>
-
                         </div>
-
                     </div>
 
-
-
                     {{-- JADWAL SERVIS --}}
-
                     <div class="booking-card">
-
                         <h2 class="booking-card-title">Jadwal Servis</h2>
-
                         <div class="form-group">
-
-                            <label class="form-label">Pilih Jadwal</label>
-
+                            <label class="form-label" for="schedule_id">Pilih Jadwal</label>
                             <select name="schedule_id" id="schedule_id" class="form-control" required>
-
                                 <option value="">Pilih jadwal servis</option>
-
-
                                 @foreach ($schedules as $schedule)
                                     <option value="{{ $schedule->schedule_id }}"
                                         data-date="{{ \Carbon\Carbon::parse($schedule->schedule_date)->locale('id')->translatedFormat('d M Y') }}"
                                         data-time="{{ substr($schedule->start_time, 0, 5) }} - {{ substr($schedule->end_time, 0, 5) }}"
                                         {{ old('schedule_id', request('schedule_id')) == $schedule->schedule_id ? 'selected' : '' }}>
-
                                         {{ \Carbon\Carbon::parse($schedule->schedule_date)->locale('id')->translatedFormat('l, d F Y') }}
-                                        - {{ substr($schedule->start_time, 0, 5) }} s/d
-                                        {{ substr($schedule->end_time, 0, 5) }}
-
+                                        - {{ substr($schedule->start_time, 0, 5) }} s/d {{ substr($schedule->end_time, 0, 5) }}
                                     </option>
                                 @endforeach
-
                             </select>
-
                         </div>
-
                         @if ($schedules->isEmpty())
                             <span class="schedule-status" style="color: #dc2626;">Tidak ada jadwal tersedia.</span>
                         @else
                             <span class="schedule-status">Jadwal tersedia</span>
                         @endif
-
                     </div>
 
+                    {{-- METODE PEMBAYARAN DIPILIH PELANGGAN --}}
                     <div class="booking-card">
-
                         <h2 class="booking-card-title">Metode Pembayaran</h2>
-
                         <div class="form-group">
-
                             <label class="form-label" for="payment_method">Pilih metode pembayaran</label>
-
                             <select name="payment_method" id="payment_method" class="form-control" required>
-
                                 <option value="">Pilih metode pembayaran</option>
-
-                                <option value="CASH" {{ old('payment_method') === 'CASH' ? 'selected' : '' }}>Cash /
-                                    Tunai</option>
-
-                                <option value="QRIS" {{ old('payment_method') === 'QRIS' ? 'selected' : '' }}>QRIS
-                                </option>
-
+                                <option value="CASH" {{ old('payment_method') === 'CASH' ? 'selected' : '' }}>Cash / Tunai</option>
+                                <option value="QRIS" {{ old('payment_method') === 'QRIS' ? 'selected' : '' }}>QRIS</option>
                             </select>
-
                         </div>
-
                     </div>
 
-                </div>
-
-
+                </div> {{-- End kolom form booking --}}
 
                 {{-- RINGKASAN BOOKING --}}
 
@@ -852,13 +808,13 @@
 
                             <span>Estimasi Pengerjaan</span>
 
-                            <strong>-</strong>
+                            <strong style="font-size: 13px; text-align: right;">Setelah diagnosis</strong>
 
                         </div>
 
                         {{-- 🔒 TAMBAHAN ID PADA TOMBOL SUBMIT --}}
                         <button type="submit" id="submitBtn" class="booking-button"
-                            {{ $schedules->isEmpty() ? 'disabled' : '' }}>Booking Service</button>
+                            {{ $schedules->isEmpty() || $services->isEmpty() ? 'disabled' : '' }}>Booking Service</button>
 
                         <a href="/ketersediaan-jadwal" class="back-link">Kembali ke Ketersediaan Jadwal</a>
 
@@ -903,7 +859,7 @@
                     summaryPaymentMethod.textContent = paymentMethodInput.value === 'CASH' ? 'Cash / Tunai' : (
                         paymentMethodInput.value === 'QRIS' ? 'QRIS' : '-');
 
-                    const selectedService = document.querySelector('input[name="service"]:checked');
+                    const selectedService = document.querySelector('input[name="service_id"]:checked');
                     if (selectedService) {
                         summaryLayanan.textContent = selectedService.dataset.serviceName;
                     } else {
@@ -935,69 +891,135 @@
             if (scheduleInput) scheduleInput.addEventListener('change', updateSummary);
             if (paymentMethodInput) paymentMethodInput.addEventListener('change', updateSummary);
 
-            document.querySelectorAll('input[name="service"]').forEach(function(radio) {
+            document.querySelectorAll('input[name="service_id"]').forEach(function(radio) {
                 radio.addEventListener('change', updateSummary);
             });
 
             updateSummary();
-        
 
 
-        // 🔒 TAMBAHAN SCRIPT UNTUK MENCEGAH DOUBLE SUBMIT / KLIK BERULANG KALI
-        document.getElementById('bookingForm').addEventListener('submit', function(e) {
-        const submitBtn = document.getElementById('submitBtn');
 
-        // Nonaktifkan tombol agar tidak bisa diklik dua kali
-        submitBtn.disabled = true;
+            // 🔒 TAMBAHAN SCRIPT UNTUK MENCEGAH DOUBLE SUBMIT / KLIK BERULANG KALI
+            document.getElementById('bookingForm').addEventListener('submit', function(e) {
+                const submitBtn = document.getElementById('submitBtn');
 
-        // Ubah tampilan tombol menjadi status loading
-        submitBtn.style.opacity = '0.7';
-        submitBtn.style.cursor = 'not-allowed';
-        submitBtn.innerText = 'Memproses Booking...';
-        });
+                // Nonaktifkan tombol agar tidak bisa diklik dua kali
+                submitBtn.disabled = true;
+
+                // Ubah tampilan tombol menjadi status loading
+                submitBtn.style.opacity = '0.7';
+                submitBtn.style.cursor = 'not-allowed';
+                submitBtn.innerText = 'Memproses Booking...';
+            });
         </script>
 
 
 
         {{-- POP-UP BOOKING BERHASIL --}}
-
         @if (session('success') && session('service_id_code'))
             <div id="successModal"
                 style="position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background-color: rgba(0, 0, 0, 0.5);">
-
                 <div
                     style="background-color: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15); padding: 24px; max-width: 28rem; width: 90%; text-align: center; border: 1px solid #e5e7eb;">
-
                     <h3 style="font-size: 1.25rem; font-weight: 700; color: #16a34a; margin-bottom: 8px;">Booking Berhasil!
                     </h3>
-
                     <p style="color: #374151; margin-bottom: 16px; font-size: 14px;">{{ session('success') }}</p>
-
                     <div
                         style="background-color: #f0fdf4; border: 1px solid #bbf7d0; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
-
                         <p style="font-size: 13px; color: #166534; margin-bottom: 4px; font-weight: 600;">Service ID Anda:
                         </p>
 
-                        <p
-                            style="font-size: 1.5rem; font-family: monospace; font-weight: 800; color: #15803d; letter-spacing: 1px;">
-                            {{ session('service_id_code') }}</p>
+                        {{-- 🔒 KODE SERVICE ID + TOMBOL SALIN --}}
+                        
+                        <div
+                            style="display: flex; flex-direction: column; align-items: center; gap: 12px; margin: 14px 0;">
+                            <p id="serviceIdCode"
+                                style="font-size: 1.5rem; font-family: monospace; font-weight: 800; color: #15803d; letter-spacing: 1px; margin: 0;">
+                                {{ session('service_id_code') }}
+                            </p>
+                            <button type="button" id="copyBtn" onclick="copyServiceId()"
+                                style="background-color: #2563eb; color: white; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; transition: background-color 0.2s;">
+                                <svg id="copyIcon" xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2">
+                                    </rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                                <span id="copyText">Salin</span>
+                            </button>
+                        </div>
 
                         <p style="font-size: 12px; color: #6b7280; margin-top: 8px;">Simpan kode ini untuk mengecek status
                             servis Anda.</p>
-
                     </div>
-
                     <button onclick="document.getElementById('successModal').style.display='none'"
                         style="background-color: #2563eb; color: white; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 14px; width: 100%;">
-
                         Tutup
-
                     </button>
-
                 </div>
-
             </div>
+
+            {{-- 🔒 SCRIPT TOMBOL SALIN --}}
+            <script>
+                function copyServiceId() {
+                    const codeElement = document.getElementById('serviceIdCode');
+                    const copyText = document.getElementById('copyText');
+                    const copyBtn = document.getElementById('copyBtn');
+                    const copyIcon = document.getElementById('copyIcon');
+                    const code = codeElement.textContent.trim();
+
+                    // Gunakan Clipboard API modern
+                    if (navigator.clipboard && window.isSecureContext) {
+                        navigator.clipboard.writeText(code).then(() => showCopied()).catch(() => fallbackCopy(code));
+                    } else {
+                        fallbackCopy(code);
+                    }
+
+                    function fallbackCopy(text) {
+                        const textarea = document.createElement('textarea');
+                        textarea.value = text;
+                        textarea.style.position = 'fixed';
+                        textarea.style.opacity = '0';
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        try {
+                            document.execCommand('copy');
+                            showCopied();
+                        } catch (err) {
+                            alert('Gagal menyalin. Silakan salin manual.');
+                        }
+                        document.body.removeChild(textarea);
+                    }
+
+                    function showCopied() {
+                        // Ubah tampilan tombol jadi "Tersalin!"
+                        copyText.textContent = 'Tersalin!';
+                        copyBtn.style.backgroundColor = '#16a34a';
+                        copyIcon.innerHTML = '<polyline points="20 6 9 17 4 12"></polyline>';
+
+                        // Kembalikan ke tampilan awal setelah 2 detik
+                        setTimeout(() => {
+                            copyText.textContent = 'Salin';
+                            copyBtn.style.backgroundColor = '#2563eb';
+                            copyIcon.innerHTML =
+                                '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>';
+                        }, 2000);
+                    }
+                }
+
+                // Hover effect untuk tombol salin
+                document.getElementById('copyBtn').addEventListener('mouseenter', function() {
+                    if (document.getElementById('copyText').textContent === 'Salin') {
+                        this.style.backgroundColor = '#1d4ed8';
+                    }
+                });
+                document.getElementById('copyBtn').addEventListener('mouseleave', function() {
+                    if (document.getElementById('copyText').textContent === 'Salin') {
+                        this.style.backgroundColor = '#2563eb';
+                    }
+                });
+            </script>
         @endif
 
     </main>

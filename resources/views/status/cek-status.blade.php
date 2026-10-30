@@ -1,238 +1,327 @@
 @extends('layouts.app')
-@section('title', 'Cek Status Service')
+
+@section('title', 'Cek Status Servis')
+
 @section('content')
+    @php
+        $hasBooking = isset($booking);
+        $payment = $payment ?? ($hasBooking ? $booking->payment : null);
+        $serviceRecord = $serviceRecord ?? null;
+
+        $isPaid =
+            $payment &&
+            $payment->payment_status === 'PAID' &&
+            in_array($payment->payment_method, ['CASH', 'QRIS'], true) &&
+            is_numeric($payment->amount) &&
+            (float) $payment->amount > 0;
+
+        $bookingStatus = $hasBooking ? $booking->status : null;
+        $recordStatus = $serviceRecord->service_status ?? null;
+
+        $statusText = 'Menunggu Konfirmasi';
+        $statusClass = 'status-pending';
+
+        if ($bookingStatus === 'WAITING_VERIFICATION') {
+            $statusText = 'Menunggu Verifikasi Booking';
+            $statusClass = 'status-waiting';
+        } elseif ($bookingStatus === 'CONFIRMED') {
+            if ($recordStatus === 'DIAGNOSIS') {
+                $statusText = 'Sedang Diagnosis';
+                $statusClass = 'status-diagnosis';
+            } elseif ($recordStatus === 'PROCESS') {
+                $statusText = 'Sedang Dikerjakan';
+                $statusClass = 'status-process';
+            } elseif ($recordStatus === 'COMPLETED') {
+                $statusText = 'Pemeriksaan Selesai';
+                $statusClass = 'status-completed';
+            } else {
+                $statusText = 'Booking Dikonfirmasi';
+                $statusClass = 'status-confirmed';
+            }
+        } elseif ($bookingStatus === 'COMPLETED') {
+            $statusText = 'Servis Selesai';
+            $statusClass = 'status-completed';
+        } elseif ($bookingStatus === 'REJECTED') {
+            $statusText = 'Booking Ditolak';
+            $statusClass = 'status-cancelled';
+        } elseif ($bookingStatus === 'CANCELLED') {
+            $statusText = 'Booking Dibatalkan';
+            $statusClass = 'status-cancelled';
+        }
+
+        $paymentStatusText = 'Belum Ada Tagihan';
+        $paymentStatusClass = 'payment-unpaid';
+
+        if ($payment?->payment_status === 'PAID' && $isPaid) {
+            $paymentStatusText = 'Lunas';
+            $paymentStatusClass = 'payment-paid';
+        } elseif ($payment?->payment_status === 'WAITING_VERIFICATION') {
+            $paymentStatusText = 'Menunggu Verifikasi';
+            $paymentStatusClass = 'payment-waiting';
+        } elseif ($payment && (float) $payment->amount > 0) {
+            $paymentStatusText = 'Belum Dibayar';
+        }
+
+        $paymentAmount = $payment && is_numeric($payment->amount) ? (float) $payment->amount : 0;
+        $estimatedCost = $serviceRecord?->estimated_cost;
+        $finalCost = $serviceRecord?->final_cost;
+        $isTerminalBooking = in_array($bookingStatus, ['CANCELLED', 'REJECTED'], true);
+        $canCancel = in_array($bookingStatus, ['PENDING', 'WAITING_VERIFICATION'], true);
+        $isQrisWaiting = $payment?->payment_status === 'WAITING_VERIFICATION';
+        $methodLabel = match ($payment?->payment_method) {
+            'CASH' => 'Cash / Tunai',
+            'QRIS' => 'QRIS',
+            default => 'Belum dipilih',
+        };
+
+        $progressBooking = in_array(
+            $bookingStatus,
+            ['PENDING', 'WAITING_VERIFICATION', 'CONFIRMED', 'COMPLETED'],
+            true,
+        );
+        $progressDiagnosis =
+            $bookingStatus === 'COMPLETED' || in_array($recordStatus, ['DIAGNOSIS', 'PROCESS', 'COMPLETED'], true);
+        $progressProcess = $bookingStatus === 'COMPLETED' || in_array($recordStatus, ['PROCESS', 'COMPLETED'], true);
+        $progressCompleted = $bookingStatus === 'COMPLETED' || $recordStatus === 'COMPLETED';
+    @endphp
+
     <style>
         .status-page {
-            max-width: 900px;
+            width: 100%;
+            max-width: 1080px;
             margin: 0 auto;
-            padding: 40px 20px;
+            padding: 38px 24px 56px;
         }
 
         .status-header {
-            margin-bottom: 32px;
+            margin-bottom: 26px;
         }
 
-        .status-label {
+        .status-eyebrow {
             color: #2563eb;
-            font-size: 13px;
-            font-weight: 700;
-            margin-bottom: 6px;
-            text-transform: uppercase;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: .08em;
+            margin-bottom: 7px;
         }
 
         .status-title {
-            font-size: 32px;
             color: #111827;
-            margin-bottom: 10px;
+            font-size: clamp(26px, 3vw, 34px);
             font-weight: 800;
+            letter-spacing: -.7px;
+            line-height: 1.2;
+            margin-bottom: 9px;
         }
 
         .status-description {
-            color: #6b7280;
-            font-size: 15px;
+            color: #64748b;
+            font-size: 14px;
+            max-width: 680px;
         }
 
         .status-card {
-            background: #ffffff;
+            background: #fff;
             border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 28px;
-            margin-bottom: 20px;
+            border-radius: 15px;
+            padding: 24px;
+            margin-bottom: 18px;
+            box-shadow: 0 4px 14px rgba(15, 23, 42, .035);
         }
 
         .card-title {
-            font-size: 18px;
             color: #111827;
-            margin-bottom: 10px;
-            font-weight: 700;
+            font-size: 17px;
+            font-weight: 800;
+            margin-bottom: 7px;
         }
 
         .card-description {
-            color: #6b7280;
+            color: #64748b;
             font-size: 13px;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
         }
 
-        .search-form {
+        .status-search-form {
             display: flex;
-            gap: 12px;
+            gap: 10px;
         }
 
-        .search-input {
-            flex: 1;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            padding: 12px 14px;
+        .status-input,
+        .status-textarea,
+        .status-file {
+            width: 100%;
+            border: 1px solid #cbd5e1;
+            border-radius: 9px;
+            background: #fff;
+            color: #111827;
+            font: inherit;
             font-size: 14px;
             outline: none;
+            padding: 12px 14px;
         }
 
-        .search-input:focus {
+        .status-input:focus,
+        .status-textarea:focus,
+        .status-file:focus {
             border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, .10);
         }
 
-        .search-button {
-            border: none;
-            background: #2563eb;
-            color: #ffffff;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 700;
+        .status-search-form .status-input {
+            flex: 1;
+            min-width: 0;
+            text-transform: uppercase;
+        }
+
+        .btn-primary,
+        .btn-secondary,
+        .btn-danger,
+        .btn-print {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border: 0;
+            border-radius: 9px;
             cursor: pointer;
+            font: inherit;
+            font-size: 13px;
+            font-weight: 750;
+            padding: 12px 17px;
+            text-decoration: none;
+            transition: background .2s ease, transform .2s ease;
         }
 
-        .search-button:hover {
+        .btn-primary {
+            background: #2563eb;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
             background: #1d4ed8;
         }
 
-        .service-header {
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #334155;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        .btn-print {
+            background: #0f172a;
+            color: #fff;
+        }
+
+        .btn-print:hover {
+            background: #1e293b;
+        }
+
+        .alert-error,
+        .alert-success {
+            border-radius: 10px;
+            padding: 12px 15px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+
+        .alert-error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+        }
+
+        .alert-success {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+        }
+
+        .validation-list {
+            margin: 7px 0 0 18px;
+        }
+
+        .service-heading {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
             gap: 16px;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
         }
 
-        .service-id {
+        .service-id-label,
+        .field-label {
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .025em;
+            margin-bottom: 5px;
+        }
+
+        .service-id-value {
             color: #2563eb;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
             font-size: 20px;
             font-weight: 800;
+            overflow-wrap: anywhere;
         }
 
-        .status-badge {
-            display: inline-block;
-            padding: 7px 11px;
+        .status-pill,
+        .payment-pill {
+            display: inline-flex;
+            align-items: center;
             border-radius: 999px;
             font-size: 11px;
             font-weight: 800;
+            padding: 7px 11px;
+            white-space: nowrap;
         }
 
-        .status-badge-pending {
-            background: #dbeafe;
+        .status-pending {
+            background: #eff6ff;
             color: #1d4ed8;
         }
 
-        .status-badge-waiting {
+        .status-waiting {
             background: #fef3c7;
             color: #92400e;
         }
 
-        .status-badge-confirmed {
-            background: #d1fae5;
-            color: #065f46;
+        .status-confirmed {
+            background: #dbeafe;
+            color: #1d4ed8;
         }
 
-        .status-badge-completed {
+        .status-diagnosis {
+            background: #ede9fe;
+            color: #6d28d9;
+        }
+
+        .status-process {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .status-completed {
             background: #dcfce7;
             color: #166534;
         }
 
-        .status-badge-rejected,
-        .status-badge-cancelled {
+        .status-cancelled {
             background: #fee2e2;
             color: #991b1b;
-        }
-
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 14px;
-            margin-bottom: 20px;
-        }
-
-        .info-item {
-            border: 1px solid #eef0f4;
-            border-radius: 9px;
-            padding: 14px;
-        }
-
-        .info-label {
-            color: #6b7280;
-            font-size: 11px;
-            margin-bottom: 5px;
-        }
-
-        .info-value {
-            color: #111827;
-            font-size: 14px;
-            font-weight: 700;
-        }
-
-        .progress {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            margin-top: 28px;
-            margin-bottom: 20px;
-        }
-
-        .progress-item {
-            text-align: center;
-        }
-
-        .progress-dot {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            margin: 0 auto 8px;
-            background: #d1d5db;
-        }
-
-        .progress-item.active .progress-dot {
-            background: #2563eb;
-        }
-
-        .progress-text {
-            color: #6b7280;
-            font-size: 11px;
-        }
-
-        .progress-item.active .progress-text {
-            color: #2563eb;
-            font-weight: 700;
-        }
-
-        .detail-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 14px;
-        }
-
-        .detail-box {
-            border: 1px solid #eef0f4;
-            border-radius: 9px;
-            padding: 16px;
-        }
-
-        .detail-box.full {
-            grid-column: 1 / -1;
-        }
-
-        .detail-label {
-            color: #6b7280;
-            font-size: 11px;
-            margin-bottom: 6px;
-        }
-
-        .detail-value {
-            color: #111827;
-            font-size: 14px;
-            font-weight: 700;
-        }
-
-        .detail-text {
-            color: #4b5563;
-            font-size: 13px;
-            line-height: 1.6;
-        }
-
-        .payment-badge {
-            display: inline-block;
-            padding: 6px 9px;
-            border-radius: 999px;
-            font-size: 10px;
-            font-weight: 800;
         }
 
         .payment-unpaid {
@@ -240,124 +329,344 @@
             color: #92400e;
         }
 
+        .payment-waiting {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
         .payment-paid {
             background: #dcfce7;
             color: #166534;
         }
 
-        .alert-error {
-            background: #fee2e2;
-            color: #991b1b;
-            border: 1px solid #fecaca;
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 20px;
+        .info-grid,
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
         }
 
-        .alert-success {
-            background: #dcfce7;
-            color: #166534;
-            border: 1px solid #bbf7d0;
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 20px;
+        .info-item,
+        .detail-item {
+            min-width: 0;
+            border: 1px solid #edf0f4;
+            border-radius: 10px;
+            padding: 14px;
         }
 
-        .back-link {
-            display: inline-block;
-            margin-top: 12px;
-            color: #2563eb;
-            font-size: 13px;
-            font-weight: 600;
-            text-decoration: none;
-        }
-
-        .qris-section {
-            background: #f0f9ff;
-            border: 2px solid #2563eb;
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 20px;
-        }
-
-        .qris-title {
-            font-size: 18px;
-            font-weight: 800;
+        .info-value {
             color: #111827;
-            margin-bottom: 12px;
+            font-size: 13px;
+            font-weight: 750;
+            overflow-wrap: anywhere;
+        }
+
+        .muted-value {
+            color: #94a3b8;
+            font-size: 13px;
+            font-style: italic;
+            font-weight: 500;
+        }
+
+        .progress-track {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 26px;
+        }
+
+        .progress-step {
+            position: relative;
             text-align: center;
         }
 
-        .qris-amount {
-            font-size: 32px;
-            font-weight: 800;
+        .progress-dot {
+            width: 13px;
+            height: 13px;
+            background: #cbd5e1;
+            border: 3px solid #e2e8f0;
+            border-radius: 50%;
+            margin: 0 auto 8px;
+        }
+
+        .progress-step.active .progress-dot {
+            background: #2563eb;
+            border-color: #bfdbfe;
+        }
+
+        .progress-text {
+            color: #94a3b8;
+            font-size: 11px;
+            font-weight: 650;
+        }
+
+        .progress-step.active .progress-text {
+            color: #1d4ed8;
+        }
+
+        .detail-item.full {
+            grid-column: 1 / -1;
+        }
+
+        .detail-value {
+            color: #111827;
+            font-size: 13px;
+            font-weight: 750;
+            overflow-wrap: anywhere;
+        }
+
+        .detail-text {
+            color: #475569;
+            font-size: 13px;
+            line-height: 1.65;
+            white-space: pre-line;
+            overflow-wrap: anywhere;
+        }
+
+        .highlight-cost {
             color: #2563eb;
+            font-size: 18px;
+            font-weight: 850;
+        }
+
+        .payment-panel {
+            border: 1px solid #bfdbfe;
+            border-radius: 13px;
+            background: #eff6ff;
+            padding: 20px;
+            margin-bottom: 18px;
+        }
+
+        .payment-panel-title {
+            color: #1e3a8a;
+            font-size: 16px;
+            font-weight: 850;
+            margin-bottom: 5px;
+        }
+
+        .payment-panel-description {
+            color: #475569;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .bill-total {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 12px;
+            border: 1px solid #dbeafe;
+            border-radius: 10px;
+            background: #fff;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .bill-amount {
+            color: #1d4ed8;
+            font-size: 23px;
+            font-weight: 850;
+            text-align: right;
+        }
+
+        .qris-wrap {
+            border: 1px solid #dbeafe;
+            background: #fff;
+            border-radius: 10px;
+            padding: 16px;
             text-align: center;
-            margin: 16px 0;
+            margin: 14px 0;
         }
 
         .qris-image {
-            max-width: 280px;
-            width: 100%;
-            margin: 0 auto 16px;
             display: block;
-            border-radius: 8px;
+            width: 100%;
+            max-width: 250px;
+            height: auto;
+            margin: 0 auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 9px;
         }
 
-        .qris-instruction {
-            background: #ffffff;
-            border: 1px solid #dbeafe;
-            border-radius: 8px;
-            padding: 16px;
-            margin-top: 16px;
-        }
-
-        .qris-instruction h4 {
-            font-size: 14px;
-            font-weight: 700;
-            color: #111827;
-            margin-bottom: 8px;
-        }
-
-        .qris-instruction ol {
-            margin: 0;
-            padding-left: 20px;
-            color: #4b5563;
+        .payment-note {
+            border-radius: 10px;
+            padding: 14px;
+            margin-top: 13px;
             font-size: 13px;
-            line-height: 1.8;
+            line-height: 1.6;
         }
 
-        .qris-note {
-            background: #fef3c7;
+        .payment-note.cash {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            color: #334155;
+        }
+
+        .payment-note.waiting {
+            background: #fffbeb;
             border: 1px solid #fde68a;
-            border-radius: 8px;
-            padding: 12px;
-            margin-top: 16px;
-            font-size: 13px;
             color: #92400e;
-            font-weight: 600;
-            text-align: center;
         }
 
-        .cash-note {
-            background: #ffffff;
-            border: 1px solid #dbeafe;
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 16px;
-            text-align: center;
-            color: #4b5563;
-            font-size: 14px;
-            line-height: 1.7;
+        .payment-note.success {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #166534;
         }
 
-        @media (max-width: 700px) {
+        .proof-preview {
+            display: inline-block;
+            color: #2563eb;
+            font-size: 12px;
+            font-weight: 700;
+            margin-top: 9px;
+            text-decoration: underline;
+        }
+
+        .cancel-panel {
+            background: #fff;
+            border: 1px solid #fecaca;
+        }
+
+        .cancel-panel .card-title {
+            color: #991b1b;
+        }
+
+        .cancel-panel .card-description {
+            color: #7f1d1d;
+        }
+
+        .status-textarea {
+            min-height: 94px;
+            resize: vertical;
+            margin-bottom: 12px;
+        }
+
+        .receipt-card {
+            background: #fff;
+            border: 1px solid #d1d5db;
+            border-radius: 14px;
+            padding: 25px;
+            margin-bottom: 18px;
+        }
+
+        .receipt-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 15px;
+            padding-bottom: 17px;
+            border-bottom: 1px dashed #cbd5e1;
+        }
+
+        .receipt-brand {
+            color: #111827;
+            font-size: 18px;
+            font-weight: 900;
+        }
+
+        .receipt-subtitle {
+            color: #64748b;
+            font-size: 12px;
+        }
+
+        .receipt-title {
+            color: #166534;
+            font-size: 13px;
+            font-weight: 850;
+            text-align: right;
+        }
+
+        .receipt-id {
+            color: #2563eb;
+            font-family: ui-monospace, monospace;
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .receipt-section {
+            padding: 16px 0;
+            border-bottom: 1px dashed #cbd5e1;
+        }
+
+        .receipt-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 6px 0;
+            font-size: 13px;
+        }
+
+        .receipt-row span:first-child {
+            color: #64748b;
+        }
+
+        .receipt-row strong {
+            color: #111827;
+            text-align: right;
+            overflow-wrap: anywhere;
+        }
+
+        .receipt-total {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding-top: 15px;
+        }
+
+        .receipt-total strong {
+            color: #166534;
+            font-size: 21px;
+        }
+
+        .receipt-footer {
+            color: #64748b;
+            font-size: 11px;
+            line-height: 1.6;
+            text-align: center;
+            padding-top: 16px;
+        }
+
+        .status-bottom-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-top: 6px;
+        }
+
+        .back-link {
+            color: #2563eb;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 680px) {
             .status-page {
-                padding: 24px 16px;
+                padding: 26px 15px 42px;
             }
 
-            .search-form {
+            .status-card {
+                padding: 18px;
+            }
+
+            .status-search-form {
                 flex-direction: column;
+            }
+
+            .status-search-form .btn-primary {
+                width: 100%;
+            }
+
+            .service-heading {
+                flex-direction: column;
+                align-items: flex-start;
             }
 
             .info-grid,
@@ -365,364 +674,438 @@
                 grid-template-columns: 1fr;
             }
 
-            .detail-box.full {
+            .detail-item.full {
                 grid-column: auto;
             }
 
-            .service-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .progress {
-                grid-template-columns: repeat(2, 1fr);
+            .progress-track {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
                 row-gap: 18px;
             }
 
-            .status-title {
-                font-size: 26px;
+            .bill-total {
+                align-items: flex-start;
+                flex-direction: column;
             }
 
-            .search-input,
-            .search-button {
-                font-size: 16px;
-                padding: 14px;
+            .bill-amount {
+                text-align: left;
             }
 
-            .qris-amount {
-                font-size: 28px;
+            .receipt-card {
+                padding: 18px;
             }
 
-            .status-card,
-            .qris-section {
-                padding: 20px;
+            .status-bottom-actions {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+        }
+
+        @media print {
+            @page {
+                size: A4;
+                margin: 16mm;
+            }
+
+            body * {
+                visibility: hidden !important;
+            }
+
+            #paymentReceipt,
+            #paymentReceipt * {
+                visibility: visible !important;
+            }
+
+            #paymentReceipt {
+                position: absolute !important;
+                inset: 0 auto auto 0 !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: 0 !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+            }
+
+            #paymentReceipt .no-print {
+                display: none !important;
             }
         }
     </style>
 
     <div class="status-page">
-        <div class="status-header">
-            <div class="status-label">FIXPOINT SERVICE</div>
-            <h1 class="status-title">Cek Status Service</h1>
-            <p class="status-description">Masukkan Service ID untuk melihat perkembangan servis perangkat Anda.</p>
-        </div>
+        <header class="status-header">
+            <div class="status-eyebrow">FIXPOINT SERVICE</div>
+            <h1 class="status-title">Cek Status Servis</h1>
+            <p class="status-description">
+                Masukkan Service ID untuk melihat perkembangan pemeriksaan, pengerjaan, estimasi biaya,
+                dan informasi pembayaran perangkat Anda.
+            </p>
+        </header>
 
         @if (session('error'))
-            <div class="alert-error">{{ session('error') }}</div>
+            <div class="alert-error" role="alert">{{ session('error') }}</div>
         @endif
+
         @if (session('success'))
-            <div class="alert-success">{{ session('success') }}</div>
+            <div class="alert-success" role="status">{{ session('success') }}</div>
         @endif
 
-        <div class="status-card">
-            <h2 class="card-title">Masukkan Service ID</h2>
-            <p class="card-description">Service ID diberikan setelah proses booking selesai.</p>
-            <form action="{{ route('cek-status.show') }}" method="GET" class="search-form">
-                <input type="text" name="code" class="search-input" placeholder="Contoh: FP-20261011-GWYTW"
-                    value="{{ request('code') }}" required>
-                <button type="submit" class="search-button">Cek Status</button>
+        @if ($errors->any())
+            <div class="alert-error" role="alert">
+                <strong>Data belum dapat diproses.</strong>
+                <ul class="validation-list">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        <section class="status-card">
+            <h2 class="card-title">Cari Service ID</h2>
+            <p class="card-description">Gunakan kode Service ID yang diberikan setelah booking berhasil.</p>
+            <form action="{{ route('cek-status.show') }}" method="GET" class="status-search-form">
+                <input type="text" name="code" class="status-input" placeholder="Contoh: FP-20261030-ABCDE"
+                    value="{{ old('code', request('code')) }}" maxlength="50" autocomplete="off" required>
+                <button type="submit" class="btn-primary">Cari Status Servis</button>
             </form>
-        </div>
+        </section>
 
-        {{-- ✅ SEMUA DETAIL BOOKING HARUS BERADA DI DALAM BLOK INI --}}
-        @if (isset($booking))
-            @php
-                $payment = $booking->payment;
-                $isPaid =
-                    $payment &&
-                    $payment->payment_status === 'PAID' &&
-                    in_array($payment->payment_method, ['CASH', 'QRIS'], true) &&
-                    is_numeric($payment->amount) &&
-                    (float) $payment->amount > 0;
-
-                $badgeClass = 'status-badge-pending';
-                $statusText = 'Menunggu Konfirmasi';
-                if ($booking->status === 'WAITING_VERIFICATION') {
-                    $badgeClass = 'status-badge-waiting';
-                    $statusText = 'Menunggu Verifikasi';
-                } elseif ($booking->status === 'CONFIRMED') {
-                    $badgeClass = 'status-badge-confirmed';
-                    $statusText = 'Sedang Dikerjakan';
-                } elseif ($booking->status === 'COMPLETED') {
-                    $badgeClass = 'status-badge-completed';
-                    $statusText = 'Selesai';
-                } elseif ($booking->status === 'REJECTED') {
-                    $badgeClass = 'status-badge-rejected';
-                    $statusText = 'Ditolak';
-                } elseif ($booking->status === 'CANCELLED') {
-                    $badgeClass = 'status-badge-cancelled';
-                    $statusText = 'Dibatalkan';
-                }
-            @endphp
-
-            <div class="status-card">
-                <div class="service-header">
+        @if ($hasBooking)
+            <section class="status-card">
+                <div class="service-heading">
                     <div>
-                        <div class="info-label">Service ID</div>
-                        <div class="service-id">{{ $booking->service_id_code }}</div>
+                        <div class="service-id-label">SERVICE ID</div>
+                        <div class="service-id-value">{{ $booking->service_id_code }}</div>
                     </div>
-                    <span class="status-badge {{ $badgeClass }}">{{ $statusText }}</span>
+                    <span class="status-pill {{ $statusClass }}">{{ $statusText }}</span>
                 </div>
 
                 <div class="info-grid">
                     <div class="info-item">
-                        <div class="info-label">Nama Pelanggan</div>
-                        <div class="info-value">{{ $booking->customer->name }}</div>
+                        <div class="field-label">Nama Pelanggan</div>
+                        <div class="info-value">{{ $booking->customer?->name ?? '-' }}</div>
                     </div>
                     <div class="info-item">
-                        <div class="info-label">Perangkat</div>
-                        <div class="info-value">{{ $booking->device->brand }} </div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Jadwal Servis</div>
+                        <div class="field-label">Perangkat</div>
                         <div class="info-value">
-                            {{ \Carbon\Carbon::parse($booking->schedule->schedule_date)->translatedFormat('d F Y') }}
-                            ({{ substr($booking->schedule->start_time, 0, 5) }} -
-                            {{ substr($booking->schedule->end_time, 0, 5) }})</div>
+                            {{ $booking->device?->device_type ?? 'Perangkat' }}
+                            {{ $booking->device?->brand ?? '' }}
+                            {{ $booking->device?->model && $booking->device?->model !== $booking->device?->brand ? '(' . $booking->device->model . ')' : '' }}
+                        </div>
                     </div>
                     <div class="info-item">
-                        <div class="info-label">Status Pembayaran</div>
+                        <div class="field-label">Kategori Layanan</div>
+                        <div class="info-value">{{ $booking->service?->name ?? '-' }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="field-label">Jadwal Booking</div>
                         <div class="info-value">
-                            <span class="payment-badge {{ $isPaid ? 'payment-paid' : 'payment-unpaid' }}">
-                                {{ $isPaid ? 'Lunas' : 'Belum Bayar' }}
-                            </span>
+                            @if ($booking->schedule)
+                                {{ \Carbon\Carbon::parse($booking->schedule->schedule_date)->locale('id')->translatedFormat('d F Y') }}
+                                <br>
+                                {{ substr($booking->schedule->start_time, 0, 5) }}–{{ substr($booking->schedule->end_time, 0, 5) }}
+                            @else
+                                -
+                            @endif
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="field-label">Metode Pembayaran</div>
+                        <div class="info-value">{{ $methodLabel }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="field-label">Status Pembayaran</div>
+                        <div class="info-value">
+                            <span class="payment-pill {{ $paymentStatusClass }}">{{ $paymentStatusText }}</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="progress">
-                    <div
-                        class="progress-item {{ in_array($booking->status, ['PENDING', 'WAITING_VERIFICATION', 'CONFIRMED', 'COMPLETED']) ? 'active' : '' }}">
-                        <div class="progress-dot"></div>
-                        <div class="progress-text">Menunggu</div>
+                @if (!$isTerminalBooking)
+                    <div class="progress-track" aria-label="Tahapan servis">
+                        <div class="progress-step {{ $progressBooking ? 'active' : '' }}">
+                            <div class="progress-dot"></div>
+                            <div class="progress-text">Booking</div>
+                        </div>
+                        <div class="progress-step {{ $progressDiagnosis ? 'active' : '' }}">
+                            <div class="progress-dot"></div>
+                            <div class="progress-text">Pemeriksaan</div>
+                        </div>
+                        <div class="progress-step {{ $progressProcess ? 'active' : '' }}">
+                            <div class="progress-dot"></div>
+                            <div class="progress-text">Pengerjaan</div>
+                        </div>
+                        <div class="progress-step {{ $progressCompleted ? 'active' : '' }}">
+                            <div class="progress-dot"></div>
+                            <div class="progress-text">Selesai</div>
+                        </div>
                     </div>
-                    <div
-                        class="progress-item {{ in_array($booking->status, ['CONFIRMED', 'COMPLETED']) ? 'active' : '' }}">
-                        <div class="progress-dot"></div>
-                        <div class="progress-text">Pemeriksaan</div>
-                    </div>
-                    <div class="progress-item {{ $booking->status === 'COMPLETED' ? 'active' : '' }}">
-                        <div class="progress-dot"></div>
-                        <div class="progress-text">Dikerjakan</div>
-                    </div>
-                    <div class="progress-item {{ $booking->status === 'COMPLETED' ? 'active' : '' }}">
-                        <div class="progress-dot"></div>
-                        <div class="progress-text">Selesai</div>
-                    </div>
-                </div>
-            </div>
+                @endif
+            </section>
 
-            <div class="status-card">
-                <h2 class="card-title">Detail Service</h2>
+            <section class="status-card">
+                <h2 class="card-title">Detail Servis</h2>
+                <p class="card-description">Informasi pemeriksaan dan pengerjaan yang diperbarui oleh Admin.</p>
+
                 <div class="detail-grid">
-                    <div class="detail-box">
-                        <div class="detail-label">Diagnosis</div>
-                        <div class="detail-text">Hasil diagnosis akan ditampilkan setelah proses pemeriksaan perangkat.
-                        </div>
+                    <div class="detail-item">
+                        <div class="field-label">Diagnosis</div>
+                        @if (filled($serviceRecord?->diagnosis))
+                            <div class="detail-text">{{ $serviceRecord->diagnosis }}</div>
+                        @else
+                            <div class="muted-value">Belum ada hasil diagnosis.</div>
+                        @endif
                     </div>
-                    <div class="detail-box">
-                        <div class="detail-label">Estimasi Biaya</div>
+
+                    <div class="detail-item">
+                        <div class="field-label">Estimasi Biaya</div>
+                        @if ($estimatedCost !== null)
+                            <div class="highlight-cost">Rp {{ number_format((float) $estimatedCost, 0, ',', '.') }}</div>
+                        @else
+                            <div class="muted-value">Menunggu hasil pemeriksaan.</div>
+                        @endif
+                    </div>
+
+                    @if ($booking->status === 'COMPLETED' && $finalCost !== null)
+                        <div class="detail-item">
+                            <div class="field-label">Biaya Akhir</div>
+                            <div class="highlight-cost">Rp {{ number_format((float) $finalCost, 0, ',', '.') }}</div>
+                        </div>
+                    @endif
+
+                    <div class="detail-item">
+                        <div class="field-label">Mulai Pengerjaan</div>
                         <div class="detail-value">
-                            {{ $payment && $payment->amount > 0 ? 'Rp ' . number_format($payment->amount, 0, ',', '.') : 'Menunggu pemeriksaan' }}
-                        </div>
-                    </div>
-                    <div class="detail-box full">
-                        <div class="detail-label">Keluhan Awal</div>
-                        <div class="detail-text">
-                            {{ $booking->device->complaint ?? 'Belum ada keluhan.' }}
+                            {{ $serviceRecord?->started_at ? \Carbon\Carbon::parse($serviceRecord->started_at)->locale('id')->translatedFormat('d F Y, H:i') : 'Belum dimulai' }}
                         </div>
                     </div>
 
-                    <div class="detail-box full">
-                        <div class="detail-label">Catatan Admin</div>
-                        <div class="detail-text"
-                            style="color: {{ filled($booking->notes) ? '#111827' : '#9ca3af' }};
-                font-style: {{ filled($booking->notes) ? 'normal' : 'italic' }};">
-                            {{ filled($booking->notes) ? $booking->notes : 'Belum ada catatan.' }}
+                    <div class="detail-item">
+                        <div class="field-label">Selesai Pengerjaan</div>
+                        <div class="detail-value">
+                            {{ $serviceRecord?->completed_at ? \Carbon\Carbon::parse($serviceRecord->completed_at)->locale('id')->translatedFormat('d F Y, H:i') : 'Belum selesai' }}
                         </div>
                     </div>
-                    <div class="detail-box">
-                        <div class="detail-label">Layanan</div>
-                        <div class="detail-value">{{ $booking->service->name }}</div>
+
+                    <div class="detail-item full">
+                        <div class="field-label">Keluhan Awal</div>
+                        <div class="detail-text">{{ $booking->device?->complaint ?? 'Belum ada keluhan.' }}</div>
                     </div>
+
+                    <div class="detail-item full">
+                        <div class="field-label">Estimasi Pengerjaan & Catatan Servis</div>
+                        @if (filled($serviceRecord?->service_notes))
+                            <div class="detail-text">{{ $serviceRecord->service_notes }}</div>
+                        @else
+                            <div class="muted-value">Estimasi pengerjaan akan ditampilkan setelah pemeriksaan.</div>
+                        @endif
+                    </div>
+
+                    @if (filled($booking->notes))
+                        <div class="detail-item full">
+                            <div class="field-label">Catatan Booking</div>
+                            <div class="detail-text">{{ $booking->notes }}</div>
+                        </div>
+                    @endif
                 </div>
-            </div>
+            </section>
 
-            {{-- BAGIAN PEMBATALAN --}}
-            @if (in_array($booking->status, ['PENDING', 'WAITING_VERIFICATION']))
-                <div class="status-card" style="border: 1px solid #fca5a5; background-color: #fef2f2;">
-                    <h2 class="card-title" style="color: #991b1b;">Batalkan Booking Service</h2>
-                    <p class="card-description" style="color: #991b1b;">Ingin membatalkan booking ini? Silakan berikan
-                        alasan pembatalan Anda di bawah ini.</p>
-                    <form action="{{ route('cek-status.cancel', $booking->service_id_code) }}" method="POST">
+            @if ($canCancel)
+                <section class="status-card cancel-panel">
+                    <h2 class="card-title">Batalkan Booking</h2>
+                    <p class="card-description">
+                        Pembatalan hanya dapat dilakukan sebelum booking dikonfirmasi untuk pemeriksaan atau pengerjaan.
+                        Slot jadwal akan dikembalikan setelah pembatalan berhasil.
+                    </p>
+                    <form action="{{ route('cek-status.cancel', $booking->service_id_code) }}" method="POST"
+                        onsubmit="return confirm('Apakah Anda yakin ingin membatalkan booking ini?')">
                         @csrf
-                        <div style="margin-bottom: 16px;">
-                            <label for="cancellation_reason"
-                                style="display: block; font-size: 13px; font-weight: 700; color: #374151; margin-bottom: 6px;">Alasan
-                                Pembatalan</label>
-                            <textarea name="cancellation_reason" id="cancellation_reason" class="search-input"
-                                style="width: 100%; box-sizing: border-box; min-height: 80px;" placeholder="Tuliskan alasan pembatalan..." required>{{ old('cancellation_reason') }}</textarea>
-                        </div>
-                        <button type="submit" onclick="return confirm('Apakah Anda yakin ingin membatalkan booking ini?')"
-                            style="background-color: #dc2626; color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 14px;">Konfirmasi
-                            Pembatalan</button>
+                        <label class="field-label" for="cancellation_reason">Alasan Pembatalan</label>
+                        <textarea name="cancellation_reason" id="cancellation_reason" class="status-textarea" maxlength="500"
+                            placeholder="Tuliskan alasan pembatalan..." required>{{ old('cancellation_reason') }}</textarea>
+                        <button type="submit" class="btn-danger">Ajukan Pembatalan</button>
                     </form>
-                </div>
+                </section>
             @endif
 
             @if ($booking->status === 'CANCELLED')
-                <div class="status-card" style="background: #fee2e2; border: 1px solid #fecaca;">
-                    <h3 style="color: #991b1b; font-size: 16px; font-weight: 800; margin-bottom: 6px;">Status: Booking Telah
-                        Dibatalkan</h3>
-                    <p style="color: #7f1d1d; font-size: 13px; margin: 0;"><strong>Alasan Pembatalan:</strong>
-                        {{ $booking->cancellation_reason ?? 'Tidak ada alasan yang tertera.' }}</p>
-                </div>
+                <section class="status-card" style="border-color:#fecaca;">
+                    <h2 class="card-title" style="color:#991b1b;">Booking Dibatalkan</h2>
+                    <div class="detail-text"><strong>Alasan:</strong>
+                        {{ $booking->cancellation_reason ?: 'Tidak ada alasan yang dicatat.' }}</div>
+                </section>
+            @elseif ($booking->status === 'REJECTED')
+                <section class="status-card" style="border-color:#fecaca;">
+                    <h2 class="card-title" style="color:#991b1b;">Booking Tidak Dapat Diproses</h2>
+                    <p class="detail-text">Silakan hubungi Admin FixPoint untuk informasi lebih lanjut.</p>
+                </section>
             @endif
 
-            {{-- ✅ BAGIAN PEMBAYARAN YANG SUDAH DIGABUNG & DIRAPIKAN --}}
             @if ($booking->status === 'COMPLETED' && !$isPaid)
-                <div class="qris-section">
-                    <h3 class="qris-title">Pembayaran Servis</h3>
+                <section class="payment-panel">
+                    <h2 class="payment-panel-title">Informasi Pembayaran</h2>
+                    <p class="payment-panel-description">
+                        Servis telah selesai. Periksa total tagihan dan ikuti petunjuk pembayaran sesuai metode yang dipilih
+                        saat booking.
+                    </p>
 
-                    <div
-                        style="background: #ffffff; border: 1px solid #bae6fd; border-radius: 8px; padding: 16px; margin-bottom: 16px; text-align: center;">
-                        <div style="font-size: 13px; color: #0369a1; margin-bottom: 4px;">Total Tagihan:</div>
-                        <div style="font-size: 28px; font-weight: 800; color: #0284c7;">Rp
-                            {{ number_format($payment->amount ?? 0, 0, ',', '.') }}</div>
-                    </div>
-
-                    @if (($payment->payment_method ?? '') === 'CASH')
-                        {{-- KALKULATOR CASH --}}
-                        <div style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px;">
-                            <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 12px; color: #111827;">💵
-                                Kalkulator Kembalian Tunai</h4>
-                            <div style="margin-bottom: 12px;">
-                                <label
-                                    style="font-size: 12px; font-weight: 600; color: #4b5563; display: block; margin-bottom: 6px;">Uang
-                                    yang Anda Bayarkan (Rp)</label>
-                                <input type="number" id="cash-input" class="form-control"
-                                    placeholder="Masukkan nominal uang..."
-                                    style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 15px; font-weight: 700; box-sizing: border-box;">
-                            </div>
-                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
-                                <button type="button" onclick="setCash(100000)"
-                                    style="background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">Rp
-                                    100.000</button>
-                                <button type="button" onclick="setCash(200000)"
-                                    style="background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">Rp
-                                    200.000</button>
-                                <button type="button" onclick="setCash(500000)"
-                                    style="background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">Rp
-                                    500.000</button>
-                                <button type="button" onclick="setCash(1000000)"
-                                    style="background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">Rp
-                                    1.000.000</button>
-                            </div>
-                            <div id="calc-result"
-                                style="background: #f9fafb; border-radius: 8px; padding: 12px; text-align: center;">
-                                <div style="font-size: 12px; color: #6b7280;">Kembalian Anda:</div>
-                                <div id="change-amount" style="font-size: 20px; font-weight: 800; color: #16a34a;">Rp 0
+                    @if ($payment && $paymentAmount > 0)
+                        <div class="bill-total">
+                            <div>
+                                <div class="field-label">TOTAL TAGIHAN</div>
+                                <div class="payment-panel-description">{{ $booking->service?->name ?? 'Jasa servis' }}
                                 </div>
                             </div>
+                            <div class="bill-amount">Rp {{ number_format($paymentAmount, 0, ',', '.') }}</div>
                         </div>
-                        <p style="text-align: center; font-size: 12px; color: #6b7280; margin-top: 12px;">💡 Tunjukkan
-                            kalkulasi ini ke kasir saat pembayaran di toko.</p>
-                    @elseif(($payment->payment_method ?? '') === 'QRIS')
-                        {{-- UPLOAD BUKTI QRIS --}}
-                        @if ($payment && $payment->payment_status === 'WAITING_VERIFICATION')
-                            <div
-                                style="background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; text-align: center; color: #92400e;">
-                                <strong>⏳ Menunggu Verifikasi Admin</strong><br>
-                                <span style="font-size: 13px;">Bukti pembayaran Anda sedang diperiksa oleh admin. Silakan
-                                    tunggu konfirmasi.</span>
+
+                        @if ($payment->payment_method === 'CASH')
+                            <div class="payment-note cash">
+                                <strong>Pembayaran Cash / Tunai</strong><br>
+                                Silakan lakukan pembayaran saat mengambil perangkat di tempat servis. Status pembayaran akan
+                                berubah menjadi <strong>Lunas</strong> setelah Admin menerima dan mengonfirmasi pembayaran.
                             </div>
-                        @else
-                            <div style="text-align: center; margin-bottom: 16px;">
-                                @if (file_exists(public_path('qris/qris-toko.png')))
-                                    <img src="{{ asset('qris/qris-toko.png') }}" alt="QRIS"
-                                        style="max-width: 250px; border-radius: 8px; border: 1px solid #e5e7eb;">
-                                @else
-                                    <p style="color: #dc2626; font-size: 13px;">Gambar QRIS belum tersedia.</p>
-                                @endif
-                            </div>
-                            <form action="{{ route('cek-status.upload-proof') }}" method="POST"
-                                enctype="multipart/form-data"
-                                style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px;">
-                                @csrf
-                                <input type="hidden" name="service_id_code" value="{{ $booking->service_id_code }}">
-                                <div style="margin-bottom: 12px;">
-                                    <label
-                                        style="font-size: 12px; font-weight: 600; color: #4b5563; display: block; margin-bottom: 6px;">Upload
-                                        Bukti Transfer (Maks 2MB)</label>
-                                    <input type="file" name="payment_proof" required
-                                        accept="image/jpeg,image/png,image/jpg,image/webp"
-                                        style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; box-sizing: border-box;">
-                                    @error('payment_proof')
-                                        <div style="color: #dc2626; font-size: 12px; margin-top: 4px;">{{ $message }}
-                                        </div>
-                                    @enderror
+                        @elseif ($payment->payment_method === 'QRIS')
+                            @if ($isQrisWaiting)
+                                <div class="payment-note waiting">
+                                    <strong>Bukti pembayaran sedang diverifikasi.</strong><br>
+                                    Admin sedang memeriksa bukti pembayaran QRIS Anda. Struk akan tersedia setelah
+                                    pembayaran dikonfirmasi lunas.
+                                    @if ($payment->payment_proof)
+                                        <br>
+                                        <a class="proof-preview" href="{{ asset('storage/' . $payment->payment_proof) }}"
+                                            target="_blank" rel="noopener">
+                                            Lihat bukti pembayaran yang dikirim
+                                        </a>
+                                    @endif
                                 </div>
-                                <button type="submit"
-                                    style="width: 100%; background: #2563eb; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer;">Kirim
-                                    Bukti Pembayaran</button>
-                            </form>
+                            @else
+                                <div class="qris-wrap">
+                                    <div class="field-label" style="margin-bottom:12px;">
+                                        SCAN QRIS UNTUK MEMBAYAR
+                                    </div>
+
+                                    @if (file_exists(public_path('qris/qris.toko.png')))
+                                        <img src="{{ asset('qris/qris.toko.png') }}" alt="Kode QRIS FixPoint Service"
+                                            class="qris-image">
+                                    @else
+                                        <p class="detail-text" style="color:#b91c1c;">
+                                            Kode QRIS belum tersedia. Silakan hubungi Admin.
+                                        </p>
+                                    @endif
+
+                                    <p class="payment-panel-description" style="margin-top:12px;">
+                                        Setelah membayar, unggah bukti transaksi agar Admin dapat memverifikasinya.
+                                    </p>
+                                </div>
+
+                                <form action="{{ route('cek-status.upload-proof') }}" method="POST"
+                                    enctype="multipart/form-data">
+                                    @csrf
+                                    <input type="hidden" name="service_id_code"
+                                        value="{{ $booking->service_id_code }}">
+                                    <label class="field-label" for="payment_proof">Bukti Pembayaran (JPG, PNG, WEBP;
+                                        maksimal 2 MB)</label>
+                                    <input type="file" name="payment_proof" id="payment_proof" class="status-file"
+                                        accept="image/jpeg,image/png,image/jpg,image/webp" required>
+                                    <button type="submit" class="btn-primary" style="width:100%;margin-top:12px;">
+                                        Kirim Bukti Pembayaran
+                                    </button>
+                                </form>
+                            @endif
+                        @else
+                            <div class="payment-note cash">
+                                Metode pembayaran belum tercatat. Silakan hubungi Admin untuk mendapatkan informasi tagihan.
+                            </div>
                         @endif
                     @else
-                        <div class="cash-note">Metode pembayaran belum dipilih. Silakan hubungi admin untuk informasi
-                            pembayaran.</div>
+                        <div class="payment-note waiting">
+                            Total tagihan belum ditetapkan oleh Admin. Silakan periksa kembali setelah biaya akhir dicatat.
+                        </div>
                     @endif
-                </div>
+                </section>
             @endif
 
-            {{-- PESAN LUNAS --}}
             @if ($isPaid)
-                <div class="status-card" style="background: #dcfce7; border: 2px solid #16a34a;">
-                    <h3 style="color: #166534; font-size: 18px; font-weight: 800; margin-bottom: 8px; text-align: center;">
-                        ✅ Pembayaran Lunas</h3>
-                    <p style="color: #15803d; text-align: center; font-size: 14px; margin: 0;">Terima kasih! Silakan ambil
-                        perangkat Anda di toko.</p>
-                </div>
+                <section class="receipt-card" id="paymentReceipt">
+                    <div class="receipt-top">
+                        <div>
+                            <div class="receipt-brand">FixPoint Service</div>
+                            <div class="receipt-subtitle">Bukti pembayaran jasa servis perangkat</div>
+                        </div>
+                        <div>
+                            <div class="receipt-title">PEMBAYARAN LUNAS</div>
+                            <div class="receipt-subtitle" style="text-align:right;">Struk transaksi</div>
+                        </div>
+                    </div>
+
+                    <div class="receipt-section">
+                        <div class="receipt-row">
+                            <span>Service ID</span>
+                            <strong class="receipt-id">{{ $booking->service_id_code }}</strong>
+                        </div>
+                        <div class="receipt-row">
+                            <span>Tanggal pembayaran</span>
+                            <strong>{{ $payment->payment_date?->locale('id')->translatedFormat('d F Y, H:i') ?? '-' }}</strong>
+                        </div>
+                        <div class="receipt-row">
+                            <span>Nama pelanggan</span>
+                            <strong>{{ $booking->customer?->name ?? '-' }}</strong>
+                        </div>
+                        <div class="receipt-row">
+                            <span>Perangkat</span>
+                            <strong>{{ trim(($booking->device?->device_type ?? '') . ' ' . ($booking->device?->brand ?? '') . ' ' . ($booking->device?->model ?? '')) ?: '-' }}</strong>
+                        </div>
+                        <div class="receipt-row">
+                            <span>Layanan</span>
+                            <strong>{{ $booking->service?->name ?? '-' }}</strong>
+                        </div>
+                    </div>
+
+                    <div class="receipt-section">
+                        <div class="receipt-row">
+                            <span>Metode pembayaran</span>
+                            <strong>{{ $methodLabel }}</strong>
+                        </div>
+                        <div class="receipt-row">
+                            <span>Status pembayaran</span>
+                            <strong style="color:#15803d;">LUNAS</strong>
+                        </div>
+                        @if (filled($serviceRecord?->diagnosis))
+                            <div class="receipt-row">
+                                <span>Diagnosis</span>
+                                <strong>{{ $serviceRecord->diagnosis }}</strong>
+                            </div>
+                        @endif
+                    </div>
+
+                    <div class="receipt-total">
+                        <span style="color:#475569;font-size:14px;font-weight:750;">Total dibayar</span>
+                        <strong>Rp {{ number_format($paymentAmount, 0, ',', '.') }}</strong>
+                    </div>
+
+                    <div class="receipt-footer">
+                        Terima kasih telah menggunakan layanan FixPoint Service.<br>
+                        Simpan struk ini sebagai bukti pembayaran Anda.
+                    </div>
+
+                    <div class="no-print" style="display:flex;justify-content:flex-end;margin-top:18px;">
+                        <button type="button" class="btn-print" onclick="window.print()">
+                            Cetak / Simpan Struk
+                        </button>
+                    </div>
+                </section>
             @endif
 
-            <a href="{{ route('cek-status') }}" class="back-link">← Cek Status Lainnya</a>
-        @endif {{-- ✅ INI ADALAH PENUTUP @if (isset($booking)) YANG BENAR --}}
+            <div class="status-bottom-actions">
+                <a href="{{ route('cek-status') }}" class="back-link">← Cek Service ID lainnya</a>
+                @if ($isPaid)
+                    <span class="payment-pill payment-paid">Pembayaran telah dikonfirmasi</span>
+                @endif
+            </div>
+        @endif
     </div>
-
-    <script>
-        // Kalkulator Cash Otomatis
-        const totalTagihan = {{ $payment->amount ?? 0 }};
-        const cashInput = document.getElementById('cash-input');
-        const changeAmount = document.getElementById('change-amount');
-        const calcResult = document.getElementById('calc-result');
-
-        if (cashInput && changeAmount) {
-            window.setCash = function(amount) {
-                cashInput.value = amount;
-                calculateChange(amount);
-            };
-
-            function calculateChange(amount) {
-                const bayar = parseInt(amount) || 0;
-                const kembalian = bayar - totalTagihan;
-
-                if (kembalian < 0) {
-                    changeAmount.textContent = 'Kurang Rp ' + Math.abs(kembalian).toLocaleString('id-ID');
-                    changeAmount.style.color = '#dc2626';
-                    calcResult.style.background = '#fee2e2';
-                } else if (kembalian === 0) {
-                    changeAmount.textContent = 'Pas! Tidak ada kembalian';
-                    changeAmount.style.color = '#2563eb';
-                    calcResult.style.background = '#eff6ff';
-                } else {
-                    changeAmount.textContent = 'Rp ' + kembalian.toLocaleString('id-ID');
-                    changeAmount.style.color = '#16a34a';
-                    calcResult.style.background = '#f0fdf4';
-                }
-            }
-
-            cashInput.addEventListener('input', function(e) {
-                calculateChange(e.target.value);
-            });
-        }
-    </script>
 @endsection
