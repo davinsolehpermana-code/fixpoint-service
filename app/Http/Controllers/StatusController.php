@@ -104,6 +104,12 @@ class StatusController extends Controller
 
                 if ($schedule && $schedule->current_booking > 0) {
                     $schedule->decrement('current_booking');
+                    $schedule->refresh();
+
+                    // Slot kembali tersedia setelah pembatalan, kecuali admin menutupnya.
+                    if ($schedule->status === 'FULL' && (int) $schedule->current_booking < (int) $schedule->max_booking) {
+                        $schedule->update(['status' => 'AVAILABLE']);
+                    }
                 }
             }
 
@@ -183,6 +189,7 @@ class StatusController extends Controller
                     'payment_status' => 'WAITING_VERIFICATION',
                     'payment_date' => now(),
                     'processed_by' => null,
+                    'notes' => null,
                 ]);
 
                 return null;

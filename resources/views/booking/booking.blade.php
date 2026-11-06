@@ -211,6 +211,200 @@
 
 
 
+        [hidden] {
+
+            display: none !important;
+
+        }
+
+
+
+        .device-options {
+
+            display: grid;
+
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+
+            gap: 14px;
+
+        }
+
+
+
+        .device-option {
+
+            display: flex;
+
+            align-items: flex-start;
+
+            gap: 12px;
+
+            border: 1px solid #dbe2ea;
+
+            border-radius: 12px;
+
+            padding: 16px;
+
+            background: #ffffff;
+
+            cursor: pointer;
+
+            transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+
+        }
+
+
+
+        .device-option:hover {
+
+            border-color: #93c5fd;
+
+            background: #f8fbff;
+
+        }
+
+
+
+        .device-option.is-selected {
+
+            border-color: #2563eb;
+
+            background: #eff6ff;
+
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+
+        }
+
+
+
+        .device-option input {
+
+            margin: 3px 0 0;
+
+            accent-color: #2563eb;
+
+            flex-shrink: 0;
+
+        }
+
+
+
+        .device-option-icon {
+
+            width: 40px;
+
+            height: 40px;
+
+            border-radius: 10px;
+
+            background: #eff6ff;
+
+            color: #2563eb;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            flex-shrink: 0;
+
+        }
+
+
+
+        .device-option.is-selected .device-option-icon {
+
+            background: #2563eb;
+
+            color: #ffffff;
+
+        }
+
+
+
+        .device-option-icon svg {
+
+            width: 21px;
+
+            height: 21px;
+
+            stroke: currentColor;
+
+            fill: none;
+
+            stroke-width: 1.8;
+
+            stroke-linecap: round;
+
+            stroke-linejoin: round;
+
+        }
+
+
+
+        .device-option-text strong {
+
+            display: block;
+
+            font-size: 14.5px;
+
+            color: #111827;
+
+        }
+
+
+
+        .device-option-text small {
+
+            display: block;
+
+            margin-top: 4px;
+
+            font-size: 12px;
+
+            line-height: 1.5;
+
+            color: #6b7280;
+
+        }
+
+
+
+        .form-hint {
+
+            font-size: 12px;
+
+            line-height: 1.5;
+
+            color: #6b7280;
+
+        }
+
+
+
+        .device-pc-note {
+
+            margin-top: 16px;
+
+            padding: 13px 15px;
+
+            border: 1px dashed #cbd5e1;
+
+            border-radius: 10px;
+
+            background: #f8fafc;
+
+            font-size: 12.5px;
+
+            line-height: 1.6;
+
+            color: #475569;
+
+        }
+
+
+
         .service-option-title {
 
             font-size: 15px;
@@ -475,7 +669,9 @@
 
             .form-grid,
 
-            .service-options {
+            .service-options,
+
+            .device-options {
 
                 grid-template-columns: 1fr;
 
@@ -501,6 +697,88 @@
                 padding: 14px;
 
                 font-size: 15px;
+
+                width: 100%;
+
+                min-height: 48px;
+
+            }
+
+
+
+            .booking-header {
+
+                margin-bottom: 17px;
+
+            }
+
+
+
+            .booking-description {
+
+                font-size: 13px;
+
+                line-height: 1.65;
+
+            }
+
+
+
+            .summary-card {
+
+                padding: 16px;
+
+            }
+
+
+
+            .summary-row {
+
+                gap: 10px;
+
+                font-size: 12.5px;
+
+            }
+
+
+
+            .summary-value {
+
+                text-align: right;
+
+                overflow-wrap: anywhere;
+
+            }
+
+
+
+            .service-option,
+
+            .device-option {
+
+                padding: 13px;
+
+                gap: 10px;
+
+            }
+
+
+
+            .device-option-icon {
+
+                flex-shrink: 0;
+
+            }
+
+
+
+            .alert-error,
+
+            .alert-success {
+
+                font-size: 12.5px;
+
+                line-height: 1.6;
 
             }
 
@@ -601,35 +879,56 @@
 
                         <h2 class="booking-card-title">Spesifikasi Perangkat</h2>
 
-                        <div class="form-grid">
+                        <p class="service-option-text" style="margin: -8px 0 16px;">
+                            Pilih jenis perangkat yang akan diservis agar teknisi bisa menyiapkan penanganan yang tepat.
+                        </p>
 
-                            <div class="form-group">
+                        <div class="device-options" role="radiogroup" aria-label="Jenis Perangkat">
 
-                                <label class="form-label">Jenis Perangkat</label>
+                            <label class="device-option {{ old('jenis_perangkat') === 'Laptop' ? 'is-selected' : '' }}">
+                                <input type="radio" name="jenis_perangkat" value="Laptop"
+                                    {{ old('jenis_perangkat') === 'Laptop' ? 'checked' : '' }} required>
+                                <span class="device-option-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24">
+                                        <rect x="3" y="5" width="18" height="12" rx="2"></rect>
+                                        <path d="M2 20h20"></path>
+                                    </svg>
+                                </span>
+                                <span class="device-option-text">
+                                    <strong>Laptop</strong>
+                                    <small>Notebook, MacBook, dan laptop lainnya</small>
+                                </span>
+                            </label>
 
-                                <select name="jenis_perangkat" id="jenis_perangkat" class="form-control" required>
+                            <label class="device-option {{ old('jenis_perangkat') === 'PC Desktop' ? 'is-selected' : '' }}">
+                                <input type="radio" name="jenis_perangkat" value="PC Desktop"
+                                    {{ old('jenis_perangkat') === 'PC Desktop' ? 'checked' : '' }} required>
+                                <span class="device-option-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24">
+                                        <rect x="3" y="4" width="18" height="12" rx="2"></rect>
+                                        <path d="M8 20h8M12 16v4"></path>
+                                    </svg>
+                                </span>
+                                <span class="device-option-text">
+                                    <strong>PC Desktop</strong>
+                                    <small>Komputer desktop, rakitan, maupun all-in-one</small>
+                                </span>
+                            </label>
 
-                                    <option value="">Pilih perangkat</option>
+                        </div>
 
-                                    <option value="Laptop" {{ old('jenis_perangkat') === 'Laptop' ? 'selected' : '' }}>
-                                        Laptop</option>
+                        <div class="form-group" id="merekModelGroup" style="margin-top: 16px;">
+                            <label class="form-label" for="merek_model">Merek / Model Laptop</label>
+                            <input type="text" name="merek_model" id="merek_model" class="form-control"
+                                placeholder="Contoh: ASUS VivoBook 14" value="{{ old('merek_model') }}">
+                            <small class="form-hint" id="merekModelHint">
+                                Tulis merek dan tipe laptop, misalnya ASUS VivoBook 14 atau Lenovo ThinkPad T480.
+                            </small>
+                        </div>
 
-                                    <option value="PC Desktop"
-                                        {{ old('jenis_perangkat') === 'PC Desktop' ? 'selected' : '' }}>PC Desktop</option>
-
-                                </select>
-
-                            </div>
-
-                            <div class="form-group">
-
-                                <label class="form-label">Merek / Model</label>
-
-                                <input type="text" name="merek_model" id="merek_model" class="form-control"
-                                    placeholder="Contoh: ASUS VivoBook" value="{{ old('merek_model') }}" required>
-
-                            </div>
-
+                        <div class="device-pc-note" id="pcDeviceNote" hidden>
+                            PC desktop tidak memerlukan merek atau model. Cukup jelaskan keluhan perangkat pada bagian
+                            Detail Keluhan.
                         </div>
 
                     </div>
@@ -756,7 +1055,7 @@
 
                         </div>
 
-                        <div class="summary-row">
+                        <div class="summary-row" id="summaryModelRow">
 
                             <span class="summary-label">Merek / Model</span>
 
@@ -830,8 +1129,11 @@
         <script>
             const namaInput = document.getElementById('nama');
             const teleponInput = document.getElementById('telepon');
-            const perangkatInput = document.getElementById('jenis_perangkat');
+            const deviceInputs = document.querySelectorAll('input[name="jenis_perangkat"]');
             const modelInput = document.getElementById('merek_model');
+            const modelGroup = document.getElementById('merekModelGroup');
+            const pcDeviceNote = document.getElementById('pcDeviceNote');
+            const summaryModelRow = document.getElementById('summaryModelRow');
             const keluhanInput = document.getElementById('keluhan');
             const scheduleInput = document.getElementById('schedule_id');
             const paymentMethodInput = document.getElementById('payment_method');
@@ -846,6 +1148,33 @@
             const summaryStatusJadwal = document.getElementById('summary-status-jadwal');
             const summaryPaymentMethod = document.getElementById('summary-payment-method');
 
+            // PC desktop tidak memakai merek/model, jadi field tersebut disembunyikan.
+            function syncDeviceFields() {
+                const selected = document.querySelector('input[name="jenis_perangkat"]:checked');
+                const isPcDesktop = selected && selected.value === 'PC Desktop';
+
+                document.querySelectorAll('.device-option').forEach(function(option) {
+                    const radio = option.querySelector('input');
+                    option.classList.toggle('is-selected', radio.checked);
+                });
+
+                if (modelGroup) {
+                    modelGroup.hidden = isPcDesktop;
+                }
+                if (pcDeviceNote) {
+                    pcDeviceNote.hidden = !isPcDesktop;
+                }
+                if (modelInput) {
+                    if (isPcDesktop) {
+                        modelInput.removeAttribute('required');
+                    } else {
+                        modelInput.setAttribute('required', 'required');
+                    }
+                }
+
+                updateSummary();
+            }
+
             let updateTimeout;
 
             function updateSummary() {
@@ -853,8 +1182,12 @@
                 updateTimeout = setTimeout(() => {
                     summaryNama.textContent = namaInput.value.trim() || '-';
                     summaryTelepon.textContent = teleponInput.value.trim() || '-';
-                    summaryPerangkat.textContent = perangkatInput.value || '-';
+                    const selectedDevice = document.querySelector('input[name="jenis_perangkat"]:checked');
+                    const deviceValue = selectedDevice ? selectedDevice.value : '';
+
+                    summaryPerangkat.textContent = deviceValue || '-';
                     summaryModel.textContent = modelInput.value.trim() || '-';
+                    summaryModelRow.hidden = deviceValue === 'PC Desktop';
                     summaryKeluhan.textContent = keluhanInput.value.trim() || '-';
                     summaryPaymentMethod.textContent = paymentMethodInput.value === 'CASH' ? 'Cash / Tunai' : (
                         paymentMethodInput.value === 'QRIS' ? 'QRIS' : '-');
@@ -885,7 +1218,9 @@
 
             if (namaInput) namaInput.addEventListener('input', updateSummary);
             if (teleponInput) teleponInput.addEventListener('input', updateSummary);
-            if (perangkatInput) perangkatInput.addEventListener('change', updateSummary);
+            deviceInputs.forEach(function(radio) {
+                radio.addEventListener('change', syncDeviceFields);
+            });
             if (modelInput) modelInput.addEventListener('input', updateSummary);
             if (keluhanInput) keluhanInput.addEventListener('input', updateSummary);
             if (scheduleInput) scheduleInput.addEventListener('change', updateSummary);
@@ -895,7 +1230,7 @@
                 radio.addEventListener('change', updateSummary);
             });
 
-            updateSummary();
+            syncDeviceFields();
 
 
 

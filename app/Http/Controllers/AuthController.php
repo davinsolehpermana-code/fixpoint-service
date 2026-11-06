@@ -16,60 +16,71 @@ class AuthController extends Controller
     }
 
     /**
-     * Proses login dengan validasi role dari form.
-     * S2-01: Kontrol Akses Multi-Role - Pastikan role di DB cocok dengan yang dipilih.
+     * Proses login dan validasi akses berdasarkan role yang dipilih.
      */
     public function login(Request $request)
     {
-        // 1. Validasi input form (tambah validasi 'role' dari radio button)
         $credentials = $request->validate([
-            'email'    => 'required|email',
-            'password' => 'required',
-            'role'     => 'required|in:admin,pemilik', // ← TAMBAHAN: Validasi role dari form
+            'email' => ['required', 'email'],
+            'password' => ['required'],
+            'role' => ['required', 'in:admin,pemilik'],
         ]);
 
-        // 2. Coba autentikasi dengan email & password
-        if (Auth::attempt([
-            'email'    => $credentials['email'],
+        // Mapping nilai tombol login ke role yang tersimpan di database.
+        $roleMap = [
+            'admin' => 'ADMIN',
+            'pemilik' => 'PEMILIK_USAHA',
+        ];
+
+        $selectedRole = $roleMap[$credentials['role']];
+
+        // Login menggunakan email dan password.
+        if (!Auth::attempt([
+            'email' => $credentials['email'],
             'password' => $credentials['password'],
         ])) {
-            $request->session()->regenerate();
+            return back()->withErrors([
+                'email' => 'Email atau password salah.',
+            ])->withInput($request->only('email', 'role'));
+        }
 
-            $user = Auth::user();
-            $selectedRole = strtoupper($credentials['role']); // Normalisasi: 'admin' → 'ADMIN'
+        $request->session()->regenerate();
 
-            // 3. Cek apakah role di database COCOK dengan yang dipilih di form
-            if ($user->role === $selectedRole) {
-                // 4. Redirect sesuai role (S2-01: Pemisahan hak akses)
-                if ($user->role === 'ADMIN') {
-                    return redirect()->route('admin.dashboard');
-                } elseif ($user->role === 'PEMILIK_USAHA') {
-                    return redirect()->route('pemilik.dashboard');
-                }
+        $user = Auth::user();
 
-                // Fallback jika role tidak dikenali
-                Auth::logout();
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
-                return redirect('/login')->withErrors([
-                    'email' => 'Role akun tidak dikenali oleh sistem.',
-                ]);
-            }
-
-            // 5. Jika role TIDAK cocok → logout & tampilkan error
+        // Pastikan akun yang login memiliki role sesuai tombol yang dipilih.
+        if (strtoupper((string) $user->role) !== $selectedRole) {
             Auth::logout();
+
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
+            $roleName = $credentials['role'] === 'admin'
+                ? 'Admin'
+                : 'Pemilik Usaha';
+
             return back()->withErrors([
-                'email' => 'Akun ini tidak memiliki akses sebagai ' . ucfirst($credentials['role']) . '. Silakan pilih role yang sesuai.',
-            ])->onlyInput('email');
+                'role' => 'Akun ini tidak memiliki akses sebagai ' . $roleName . '. Silakan pilih role yang sesuai.',
+            ])->withInput($request->only('email', 'role'));
         }
 
-        // 6. Jika email/password salah
-        return back()->withErrors([
-            'email' => 'Email atau password salah.',
-        ])->onlyInput('email');
+        // Redirect sesuai role.
+        if ($user->role === 'ADMIN') {
+            return redirect()->route('admin.dashboard');
+        }
+
+        if ($user->role === 'PEMILIK_USAHA') {
+            return redirect()->route('pemilik.dashboard');
+        }
+
+        // Pengaman jika ada role yang tidak dikenali.
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('login')->withErrors([
+            'email' => 'Role akun tidak dikenali oleh sistem.',
+        ]);
     }
 
     /**

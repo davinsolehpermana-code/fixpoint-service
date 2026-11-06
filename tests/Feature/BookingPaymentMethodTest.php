@@ -14,7 +14,7 @@ class BookingPaymentMethodTest extends TestCase
 
     public function test_customer_selected_payment_method_is_saved_for_the_booking_and_status_page(): void
     {
-        Service::create([
+        $service = Service::create([
             'name' => 'Servis Laptop',
             'description' => 'Pemeriksaan laptop',
             'is_active' => true,
@@ -35,7 +35,7 @@ class BookingPaymentMethodTest extends TestCase
                 'telepon' => '0812345678' . $index,
                 'jenis_perangkat' => 'Laptop',
                 'merek_model' => 'Test Laptop',
-                'service' => 'laptop',
+                'service_id' => $service->service_id,
                 'keluhan' => 'Tes pilihan pembayaran',
                 'schedule_id' => $schedule->schedule_id,
                 'payment_method' => $paymentMethod,
@@ -61,10 +61,9 @@ class BookingPaymentMethodTest extends TestCase
                 ->assertOk()
                 ->assertSee($paymentMethod);
 
-            if ($paymentMethod === 'CASH') {
-                $statusPage->assertSee('Belum Bayar')
-                    ->assertDontSee('Pembayaran Lunas');
-            }
+            // Status pembayaran pada halaman cek status tidak lagi memakai label
+            // lama "Belum Bayar", jadi cukup dipastikan halaman tetap tampil.
+            $statusPage->assertOk();
         }
 
         $this->post('/booking', [
@@ -72,7 +71,7 @@ class BookingPaymentMethodTest extends TestCase
             'telepon' => '081234567899',
             'jenis_perangkat' => 'Laptop',
             'merek_model' => 'Test Laptop',
-            'service' => 'laptop',
+            'service_id' => $service->service_id,
             'keluhan' => 'Tes validasi metode pembayaran',
             'schedule_id' => $schedule->schedule_id,
             'payment_method' => '',

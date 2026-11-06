@@ -33,7 +33,8 @@ class BookingController extends Controller
                 'regex:/^[0-9+\\-\\s()]+$/',
             ],
             'jenis_perangkat' => ['required', Rule::in(['Laptop', 'PC Desktop'])],
-            'merek_model' => ['required', 'string', 'max:255'],
+            // Merek/model hanya relevan untuk laptop; PC desktop cukup jenis perangkatnya.
+            'merek_model' => ['nullable', 'string', 'max:255', 'required_unless:jenis_perangkat,PC Desktop'],
             'service_id' => [
                 'required',
                 'integer',
@@ -46,6 +47,7 @@ class BookingController extends Controller
             'nama.regex' => 'Nama hanya boleh berisi huruf, spasi, tanda titik, koma, atau strip.',
             'telepon.regex' => 'Nomor telepon hanya boleh berisi angka dan karakter + - ( ).',
             'telepon.min' => 'Nomor telepon minimal 10 digit.',
+            'merek_model.required_unless' => 'Merek / model wajib diisi untuk perangkat laptop.',
             'service_id.exists' => 'Layanan yang dipilih tidak tersedia. Silakan pilih layanan lain.',
             'schedule_id.exists' => 'Jadwal yang dipilih tidak valid.',
             'keluhan.max' => 'Keluhan maksimal 1000 karakter.',
@@ -93,11 +95,17 @@ class BookingController extends Controller
                 ]);
             }
 
+            // PC desktop tidak memakai merek/model, kolomnya diisi string kosong
+            // karena struktur tabel devices mewajibkan nilai (NOT NULL).
+            $deviceName = $validated['jenis_perangkat'] === 'PC Desktop'
+                ? ''
+                : trim((string) ($validated['merek_model'] ?? ''));
+
             $device = Device::create([
                 'customer_id' => $customer->customer_id,
                 'device_type' => $validated['jenis_perangkat'],
-                'brand' => $validated['merek_model'],
-                'model' => $validated['merek_model'],
+                'brand' => $deviceName,
+                'model' => $deviceName,
                 'complaint' => $validated['keluhan'],
             ]);
 
@@ -130,6 +138,12 @@ class BookingController extends Controller
             ]);
 
             $schedule->increment('current_booking');
+            $schedule->refresh();
+
+            // Kuota habis bukan berarti jadwal hilang, hanya berubah status menjadi FULL.
+            if ($schedule->status === 'AVAILABLE' && (int) $schedule->current_booking >= (int) $schedule->max_booking) {
+                $schedule->update(['status' => 'FULL']);
+            }
 
             return redirect()->route('booking')
                 ->with('success', 'Booking berhasil dikirim! Silakan simpan Service ID Anda.')

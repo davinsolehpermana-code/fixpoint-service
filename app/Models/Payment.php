@@ -25,6 +25,8 @@ class Payment extends Model
     'payment_status',
     'payment_proof',
     'payment_date',
+    'cash_received',
+    'notes',
      ];
 
     // Casting tipe data

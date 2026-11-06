@@ -3,6 +3,18 @@
 @section('title', 'Dashboard Admin')
 
 @section('admin-content')
+<style>
+    .admin-complaint {
+        font-family: var(--font-sans);
+        font-size: 12px;
+        line-height: 1.55;
+        color: #475569;
+        min-width: 180px;
+        max-width: 280px;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+</style>
 <div class="admin-page-header">
     <div>
         <div class="admin-eyebrow">FixPoint Service</div>
@@ -38,6 +50,8 @@
     </div>
 </div>
 
+@include('admin.partials.qris-payment-proofs', ['proofs' => $recentQrisProofs ?? collect()])
+
 <div class="admin-grid-2">
     <section class="admin-card">
         <div class="admin-card-header">
@@ -55,6 +69,7 @@
                         <th>Service ID</th>
                         <th>Pelanggan</th>
                         <th>Perangkat</th>
+                        <th>Keluhan Awal</th>
                         <th>Status</th>
                         <th>Aksi</th>
                     </tr>
@@ -85,11 +100,22 @@
                             <td><span class="admin-id">{{ $booking->service_id_code }}</span></td>
                             <td><span class="admin-primary-text">{{ $booking->customer_name ?? '-' }}</span></td>
                             <td>{{ trim(($booking->device_type ?? '') . ' ' . ($booking->brand ?? '')) ?: '-' }}</td>
+                            <td><div class="admin-complaint">{{ $booking->complaint ?: '—' }}</div></td>
                             <td><span class="admin-badge {{ $statusClass }}">{{ $statusLabel }}</span></td>
-                            <td><a href="{{ route('admin.service-process', ['q' => $booking->service_id_code]) }}" class="admin-btn admin-btn-soft">Lihat</a></td>
+                            <td>
+                                <div class="admin-inline-actions">
+                                    <a href="{{ route('admin.service-process', ['q' => $booking->service_id_code]) }}" class="admin-btn admin-btn-soft">Lihat</a>
+                                    @if(in_array($booking->booking_status, ['PENDING', 'WAITING_VERIFICATION', 'CONFIRMED'], true))
+                                        <button type="button" class="admin-btn admin-btn-danger js-cancel-booking"
+                                            data-cancel-url="{{ route('admin.booking.cancel', $booking->booking_id) }}"
+                                            data-code="{{ $booking->service_id_code }}"
+                                            data-customer="{{ $booking->customer_name ?? '-' }}">Batalkan</button>
+                                    @endif
+                                </div>
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5"><div class="admin-empty"><strong>Belum ada booking</strong>Booking yang masuk akan muncul di sini.</div></td></tr>
+                        <tr><td colspan="6"><div class="admin-empty"><strong>Belum ada booking</strong>Booking yang masuk akan muncul di sini.</div></td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -148,4 +174,6 @@
         </a>
     </div>
 </section>
+
+@include('admin.partials.cancel-booking-modal')
 @endsection

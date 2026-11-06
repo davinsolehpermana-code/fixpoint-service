@@ -3,21 +3,50 @@
 @section('title', 'Riwayat Servis')
 
 @section('admin-content')
+@php
+    $exportQuery = array_filter([
+        'q' => $search,
+        'from' => $from,
+        'to' => $to,
+    ], fn ($value) => $value !== null && $value !== '');
+@endphp
 <div class="admin-page-header">
     <div>
         <div class="admin-eyebrow">Laporan</div>
         <h1 class="admin-page-title">Riwayat Servis</h1>
-        <p class="admin-page-subtitle">Lihat catatan servis yang telah selesai, mulai dari diagnosis hingga biaya akhir.</p>
+        <p class="admin-page-subtitle">Lihat catatan servis yang telah selesai, filter berdasarkan rentang tanggal, lalu cetak atau ekspor laporannya.</p>
+    </div>
+    <div class="admin-inline-actions">
+        <a href="{{ route($routePrefix . '.service-history.pdf', $exportQuery + ['print' => 1]) }}" target="_blank" rel="noopener" class="admin-btn admin-btn-soft">Cetak</a>
+        <a href="{{ route($routePrefix . '.service-history.pdf', $exportQuery) }}" class="admin-btn admin-btn-primary">Download PDF</a>
+        <a href="{{ route($routePrefix . '.service-history.excel', $exportQuery) }}" class="admin-btn admin-btn-success">Export Excel</a>
     </div>
 </div>
 
 <section class="admin-card">
-    <div class="admin-toolbar">
-        <form action="{{ route('admin.service-history') }}" method="GET" class="admin-search">
-            <input type="text" name="q" class="admin-input" value="{{ $search }}" placeholder="Cari Service ID, pelanggan, atau perangkat...">
-            <button type="submit" class="admin-btn admin-btn-primary">Cari</button>
-        </form>
-        <span class="admin-badge badge-green">{{ $records->total() }} servis selesai</span>
+    <form action="{{ route($routePrefix . '.service-history') }}" method="GET" class="admin-filter" style="display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));align-items:end;">
+        <div class="admin-form-group" style="margin:0;">
+            <label class="admin-label" for="q">Pencarian</label>
+            <input type="text" id="q" name="q" class="admin-input" value="{{ $search }}" placeholder="Service ID, pelanggan, atau perangkat...">
+        </div>
+        <div class="admin-form-group" style="margin:0;">
+            <label class="admin-label" for="from">Tanggal Mulai</label>
+            <input type="date" id="from" name="from" class="admin-input" value="{{ $from }}">
+        </div>
+        <div class="admin-form-group" style="margin:0;">
+            <label class="admin-label" for="to">Tanggal Akhir</label>
+            <input type="date" id="to" name="to" class="admin-input" value="{{ $to }}">
+        </div>
+        <button type="submit" class="admin-btn admin-btn-primary">Terapkan Filter</button>
+        <a href="{{ route($routePrefix . '.service-history') }}" class="admin-btn admin-btn-outline">Reset Filter</a>
+    </form>
+
+    <div class="admin-toolbar" style="margin-top:16px;">
+        <div class="admin-muted">Periode: <strong>{{ $periodLabel }}</strong></div>
+        <div class="admin-inline-actions">
+            <span class="admin-badge badge-green">{{ $summary['total_servis'] }} servis selesai</span>
+            <span class="admin-badge badge-blue">Total biaya Rp {{ number_format($summary['total_biaya'], 0, ',', '.') }}</span>
+        </div>
     </div>
 
     <div style="display:grid;gap:11px;">
@@ -48,7 +77,7 @@
                 </div>
             </details>
         @empty
-            <div class="admin-empty"><strong>Belum ada riwayat servis</strong>Servis yang berstatus selesai akan tampil di halaman ini.</div>
+            <div class="admin-empty"><strong>Belum ada riwayat servis</strong>Servis selesai pada periode ini belum tersedia. Coba ubah rentang tanggal atau reset filter.</div>
         @endforelse
     </div>
     <div class="admin-pagination">{{ $records->links() }}</div>

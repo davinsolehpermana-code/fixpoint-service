@@ -49,6 +49,12 @@
             $statusClass = 'status-cancelled';
         }
 
+        $isQrisWaiting = $payment?->payment_status === 'WAITING_VERIFICATION';
+        // UNPAID + payment_proof terisi dipakai sebagai penanda Admin meminta upload ulang.
+        $isQrisReuploadRequested = $payment?->payment_method === 'QRIS'
+            && $payment?->payment_status === 'UNPAID'
+            && filled($payment?->payment_proof);
+
         $paymentStatusText = 'Belum Ada Tagihan';
         $paymentStatusClass = 'payment-unpaid';
 
@@ -58,16 +64,21 @@
         } elseif ($payment?->payment_status === 'WAITING_VERIFICATION') {
             $paymentStatusText = 'Menunggu Verifikasi';
             $paymentStatusClass = 'payment-waiting';
+        } elseif ($isQrisReuploadRequested) {
+            $paymentStatusText = 'Perlu Upload Ulang';
+            $paymentStatusClass = 'payment-waiting';
         } elseif ($payment && (float) $payment->amount > 0) {
             $paymentStatusText = 'Belum Dibayar';
         }
 
         $paymentAmount = $payment && is_numeric($payment->amount) ? (float) $payment->amount : 0;
+        // Nominal tunai dicatat Admin saat konfirmasi lunas; struk hanya menampilkannya.
+        $cashReceived = $payment && is_numeric($payment->cash_received) ? (float) $payment->cash_received : null;
+        $cashChange = $cashReceived !== null ? max(0, $cashReceived - $paymentAmount) : null;
         $estimatedCost = $serviceRecord?->estimated_cost;
         $finalCost = $serviceRecord?->final_cost;
         $isTerminalBooking = in_array($bookingStatus, ['CANCELLED', 'REJECTED'], true);
         $canCancel = in_array($bookingStatus, ['PENDING', 'WAITING_VERIFICATION'], true);
-        $isQrisWaiting = $payment?->payment_status === 'WAITING_VERIFICATION';
         $methodLabel = match ($payment?->payment_method) {
             'CASH' => 'Cash / Tunai',
             'QRIS' => 'QRIS',
@@ -176,8 +187,7 @@
 
         .btn-primary,
         .btn-secondary,
-        .btn-danger,
-        .btn-print {
+        .btn-danger {
             display: inline-flex;
             justify-content: center;
             align-items: center;
@@ -218,15 +228,6 @@
 
         .btn-danger:hover {
             background: #b91c1c;
-        }
-
-        .btn-print {
-            background: #0f172a;
-            color: #fff;
-        }
-
-        .btn-print:hover {
-            background: #1e293b;
         }
 
         .alert-error,
@@ -559,6 +560,22 @@
             border-bottom: 1px dashed #cbd5e1;
         }
 
+        .receipt-brand-wrap {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+        }
+
+        .receipt-logo {
+            width: 46px;
+            height: 46px;
+            border-radius: 11px;
+            object-fit: cover;
+            border: 1px solid #e2e7f8;
+            background: #fff;
+            flex-shrink: 0;
+        }
+
         .receipt-brand {
             color: #111827;
             font-size: 18px;
@@ -579,7 +596,7 @@
 
         .receipt-id {
             color: #2563eb;
-            font-family: ui-monospace, monospace;
+            font-family: var(--font-mono, ui-monospace, monospace);
             font-size: 13px;
             font-weight: 800;
         }
@@ -618,6 +635,16 @@
         .receipt-total strong {
             color: #166534;
             font-size: 21px;
+        }
+
+        .receipt-cash-summary {
+            border-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .receipt-cash-summary strong {
+            font-family: var(--font-mono, ui-monospace, monospace);
+            font-size: 14px;
         }
 
         .receipt-footer {
@@ -693,45 +720,75 @@
             }
 
             .receipt-card {
-                padding: 18px;
+                padding: 16px;
+            }
+
+            .receipt-top {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .receipt-title {
+                text-align: left;
+            }
+
+            .receipt-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 2px;
+                font-size: 12.5px;
+            }
+
+            .receipt-row strong {
+                text-align: left;
+                max-width: 100%;
+            }
+
+            .receipt-id {
+                font-size: 12px;
+                overflow-wrap: anywhere;
+            }
+
+            .receipt-total {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 2px;
+            }
+
+            .receipt-total strong {
+                font-size: 20px;
+            }
+
+            .receipt-cash-summary strong {
+                font-size: 13px;
+            }
+
+            .qris-image {
+                max-width: 100%;
+                height: auto;
+            }
+
+            .status-file {
+                width: 100%;
+            }
+
+            .proof-preview {
+                display: inline-block;
+                overflow-wrap: anywhere;
             }
 
             .status-bottom-actions {
-                align-items: flex-start;
+                align-items: stretch;
                 flex-direction: column;
+                gap: 10px;
+            }
+
+            .status-bottom-actions .btn-primary,
+            .status-bottom-actions .btn-secondary {
+                width: 100%;
             }
         }
 
-        @media print {
-            @page {
-                size: A4;
-                margin: 16mm;
-            }
-
-            body * {
-                visibility: hidden !important;
-            }
-
-            #paymentReceipt,
-            #paymentReceipt * {
-                visibility: visible !important;
-            }
-
-            #paymentReceipt {
-                position: absolute !important;
-                inset: 0 auto auto 0 !important;
-                width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                border: 0 !important;
-                border-radius: 0 !important;
-                box-shadow: none !important;
-            }
-
-            #paymentReceipt .no-print {
-                display: none !important;
-            }
-        }
     </style>
 
     <div class="status-page">
@@ -976,13 +1033,27 @@
                                     pembayaran dikonfirmasi lunas.
                                     @if ($payment->payment_proof)
                                         <br>
-                                        <a class="proof-preview" href="{{ asset('storage/' . $payment->payment_proof) }}"
+                                        <a class="proof-preview" href="{{ route('cek-status.proof', $booking->service_id_code) }}"
                                             target="_blank" rel="noopener">
                                             Lihat bukti pembayaran yang dikirim
                                         </a>
                                     @endif
                                 </div>
                             @else
+                                @if ($isQrisReuploadRequested)
+                                    <div class="payment-note waiting" style="margin-bottom:14px;">
+                                        <strong>Admin meminta bukti pembayaran diunggah ulang.</strong><br>
+                                        Pastikan gambar baru terlihat jelas dan nominalnya sesuai tagihan.
+                                        @if (filled($payment->notes))
+                                            <br><strong>Catatan Admin:</strong> {{ $payment->notes }}
+                                        @endif
+                                        <br>
+                                        <a class="proof-preview" href="{{ route('cek-status.proof', $booking->service_id_code) }}"
+                                            target="_blank" rel="noopener">
+                                            Lihat bukti sebelumnya
+                                        </a>
+                                    </div>
+                                @endif
                                 <div class="qris-wrap">
                                     <div class="field-label" style="margin-bottom:12px;">
                                         SCAN QRIS UNTUK MEMBAYAR
@@ -1032,9 +1103,13 @@
             @if ($isPaid)
                 <section class="receipt-card" id="paymentReceipt">
                     <div class="receipt-top">
-                        <div>
-                            <div class="receipt-brand">FixPoint Service</div>
-                            <div class="receipt-subtitle">Bukti pembayaran jasa servis perangkat</div>
+                        <div class="receipt-brand-wrap">
+                            <img src="{{ asset('images/logo.fixpoint.jpeg') }}" alt="Logo FixPoint Service"
+                                class="receipt-logo">
+                            <div>
+                                <div class="receipt-brand">FixPoint Service</div>
+                                <div class="receipt-subtitle">Bukti pembayaran jasa servis perangkat</div>
+                            </div>
                         </div>
                         <div>
                             <div class="receipt-title">PEMBAYARAN LUNAS</div>
@@ -1052,8 +1127,16 @@
                             <strong>{{ $payment->payment_date?->locale('id')->translatedFormat('d F Y, H:i') ?? '-' }}</strong>
                         </div>
                         <div class="receipt-row">
+                            <span>ID Pelanggan</span>
+                            <strong class="receipt-id">{{ $booking->customer?->customer_id ?? '-' }}</strong>
+                        </div>
+                        <div class="receipt-row">
                             <span>Nama pelanggan</span>
                             <strong>{{ $booking->customer?->name ?? '-' }}</strong>
+                        </div>
+                        <div class="receipt-row">
+                            <span>No. Telepon</span>
+                            <strong>{{ $booking->customer?->phone_number ?? '-' }}</strong>
                         </div>
                         <div class="receipt-row">
                             <span>Perangkat</span>
@@ -1083,19 +1166,32 @@
                     </div>
 
                     <div class="receipt-total">
-                        <span style="color:#475569;font-size:14px;font-weight:750;">Total dibayar</span>
+                        <span style="color:#475569;font-size:14px;font-weight:750;">
+                            {{ $payment->payment_method === 'CASH' ? 'Total tagihan' : 'Total dibayar' }}
+                        </span>
                         <strong>Rp {{ number_format($paymentAmount, 0, ',', '.') }}</strong>
                     </div>
 
+                    @if ($payment->payment_method === 'CASH')
+                        <div class="receipt-section receipt-cash-summary">
+                            <div class="receipt-row">
+                                <span>Bayar (tunai)</span>
+                                <strong>
+                                    {{ $cashReceived !== null ? 'Rp ' . number_format($cashReceived, 0, ',', '.') : '—' }}
+                                </strong>
+                            </div>
+                            <div class="receipt-row">
+                                <span>Kembalian</span>
+                                <strong>
+                                    {{ $cashChange !== null ? 'Rp ' . number_format($cashChange, 0, ',', '.') : '—' }}
+                                </strong>
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="receipt-footer">
                         Terima kasih telah menggunakan layanan FixPoint Service.<br>
-                        Simpan struk ini sebagai bukti pembayaran Anda.
-                    </div>
-
-                    <div class="no-print" style="display:flex;justify-content:flex-end;margin-top:18px;">
-                        <button type="button" class="btn-print" onclick="window.print()">
-                            Cetak / Simpan Struk
-                        </button>
+                        Rincian ini tersimpan pada sistem kami dan dapat dibuka kembali dengan Service ID di atas.
                     </div>
                 </section>
             @endif

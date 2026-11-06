@@ -93,6 +93,40 @@
             margin-bottom: 14px;
         }
 
+        .schedule-item.is-full {
+            border-color: #f59e0b;
+            background: #fffbeb;
+        }
+
+        .schedule-item.is-full .schedule-slots,
+        .schedule-item.is-closed .schedule-slots {
+            color: #b45309;
+        }
+
+        .schedule-item.is-closed {
+            border-color: #cbd5e1;
+            background: #f8fafc;
+        }
+
+        .schedule-item.is-closed .schedule-slots {
+            color: #64748b;
+        }
+
+        .schedule-status-pill {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+            padding: 3px 10px;
+            border-radius: 999px;
+            margin-bottom: 10px;
+        }
+
+        .pill-available { background: #dcfce7; color: #166534; }
+        .pill-full { background: #fef3c7; color: #92400e; }
+        .pill-closed { background: #e2e8f0; color: #475569; }
+
         .btn-book {
             display: inline-block;
             background: #2563eb;
@@ -107,6 +141,16 @@
 
         .btn-book:hover {
             background: #1d4ed8;
+        }
+
+        .btn-book.is-disabled {
+            background: #cbd5e1;
+            color: #475569;
+            cursor: not-allowed;
+        }
+
+        .btn-book.is-disabled:hover {
+            background: #cbd5e1;
         }
 
         .empty-state {
@@ -172,7 +216,19 @@
                 <div class="schedule-grid">
                     
                     @foreach ($schedules as $schedule)
-                        <div class="schedule-item">
+                        @php
+                            $capacity = max(1, (int) $schedule->max_booking);
+                            $filled = (int) $schedule->current_booking;
+                            $remaining = max(0, $capacity - $filled);
+                            $isClosed = $schedule->status === 'CLOSED';
+                            $isFull = !$isClosed && ($schedule->status === 'FULL' || $remaining === 0);
+                            $state = $isClosed ? 'closed' : ($isFull ? 'full' : 'available');
+                            $stateLabel = $state === 'closed' ? 'Ditutup' : ($state === 'full' ? 'Penuh' : 'Tersedia');
+                        @endphp
+
+                        <div class="schedule-item is-{{ $state }}">
+                            <span class="schedule-status-pill pill-{{ $state }}">{{ $stateLabel }}</span>
+
                             <div class="schedule-day">
                                 {{ \Carbon\Carbon::parse($schedule->schedule_date)->locale('id')->translatedFormat('l') }}
                             </div>
@@ -186,12 +242,22 @@
                             </div>
 
                             <div class="schedule-slots">
-                                Tersedia ({{ $schedule->max_booking - $schedule->current_booking }} slot tersisa)
+                                @if ($state === 'closed')
+                                    Jadwal ini sedang ditutup oleh admin.
+                                @elseif ($state === 'full')
+                                    Kuota penuh ({{ $filled }}/{{ $capacity }} slot terisi).
+                                @else
+                                    Tersedia ({{ $remaining }} dari {{ $capacity }} slot).
+                                @endif
                             </div>
 
-                            <a href="{{ route('booking') }}?schedule_id={{ $schedule->schedule_id }}" class="btn-book">
-                                Pilih Jadwal
-                            </a>
+                            @if ($state === 'available')
+                                <a href="{{ route('booking') }}?schedule_id={{ $schedule->schedule_id }}" class="btn-book">
+                                    Pilih Jadwal
+                                </a>
+                            @else
+                                <span class="btn-book is-disabled">{{ $state === 'closed' ? 'Ditutup' : 'Slot Penuh' }}</span>
+                            @endif
                         </div>
                     @endforeach
 

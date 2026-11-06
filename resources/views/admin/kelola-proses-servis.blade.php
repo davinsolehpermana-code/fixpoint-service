@@ -80,6 +80,7 @@
                             @endif
                         </td>
                         <td>
+                            <div class="admin-inline-actions">
                             @if(in_array($booking->booking_status, ['PENDING', 'WAITING_VERIFICATION'], true))
                                 <form action="{{ route('admin.booking.verify', $booking->booking_id) }}" method="POST" class="js-admin-confirm">
                                     @csrf @method('PUT')
@@ -97,6 +98,14 @@
                             @else
                                 <span class="admin-muted">—</span>
                             @endif
+                            @if(in_array($booking->booking_status, ['PENDING', 'WAITING_VERIFICATION', 'CONFIRMED'], true)
+                                && !in_array($booking->service_status, ['PROCESS', 'COMPLETED'], true))
+                                <button type="button" class="admin-btn admin-btn-danger js-cancel-booking"
+                                    data-cancel-url="{{ route('admin.booking.cancel', $booking->booking_id) }}"
+                                    data-code="{{ $booking->service_id_code }}"
+                                    data-customer="{{ $booking->customer_name ?? '-' }}">Batalkan</button>
+                            @endif
+                            </div>
                         </td>
                     </tr>
                 @empty
@@ -200,6 +209,8 @@
         </form>
     @endif
 </section>
+
+@include('admin.partials.cancel-booking-modal')
 
 <div class="admin-confirm-overlay" id="adminConfirmModal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="adminConfirmTitle" style="position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.56);display:none;align-items:center;justify-content:center;padding:18px;">
     <div style="width:min(100%,440px);background:#fff;border-radius:17px;padding:23px;box-shadow:0 25px 70px rgba(15,23,42,.25);">

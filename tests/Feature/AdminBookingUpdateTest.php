@@ -17,7 +17,7 @@ class AdminBookingUpdateTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_amount_above_payment_column_limit_is_rejected_without_updating_booking(): void
+    public function test_final_cost_above_column_limit_is_rejected_without_updating_booking(): void
     {
         $admin = User::create([
             'email' => 'admin@example.test',
@@ -71,14 +71,13 @@ class AdminBookingUpdateTest extends TestCase
             ->from(route('admin.dashboard'))
             ->post(route('admin.booking.update'), [
                 'service_id_code' => $booking->service_id_code,
-                'status' => 'COMPLETED',
-                'amount' => '50000000000',
-                'payment_method' => 'CASH',
+                'service_status' => 'COMPLETED',
+                'final_cost' => '50000000000',
             ]);
 
         $response->assertRedirect(route('admin.dashboard'))
             ->assertSessionHasErrors([
-                'amount' => 'Total biaya tidak boleh melebihi Rp 9.999.999.999,99.',
+                'final_cost' => 'Biaya akhir melebihi batas yang diizinkan.',
             ]);
 
         $this->assertDatabaseHas('bookings', [

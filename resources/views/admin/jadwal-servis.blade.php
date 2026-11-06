@@ -65,7 +65,7 @@
     <div class="admin-table-wrap">
         <table class="admin-table">
             <thead>
-                <tr><th>Tanggal</th><th>Waktu</th><th>Kuota Terisi</th><th>Status</th></tr>
+                <tr><th>Tanggal</th><th>Waktu</th><th>Kuota Terisi</th><th>Status</th><th>Aksi</th></tr>
             </thead>
             <tbody>
                 @forelse($schedules as $schedule)
@@ -73,7 +73,10 @@
                         $filled = (int) $schedule->current_booking;
                         $capacity = (int) $schedule->max_booking;
                         $isPast = \Carbon\Carbon::parse($schedule->schedule_date)->isPast() && !\Carbon\Carbon::parse($schedule->schedule_date)->isToday();
-                        $isFull = $filled >= $capacity || $schedule->status !== 'AVAILABLE' || $isPast;
+                        $isClosed = $schedule->status === 'CLOSED';
+                        $isFull = !$isClosed && ($filled >= $capacity || $schedule->status === 'FULL');
+                        $statusLabel = $isPast ? 'Lewat' : ($isClosed ? 'Ditutup' : ($isFull ? 'Penuh' : 'Tersedia'));
+                        $badgeClass = ($isPast || $isClosed) ? 'badge-gray' : ($isFull ? 'badge-yellow' : 'badge-green');
                     @endphp
                     <tr>
                         <td><span class="admin-primary-text">{{ \Carbon\Carbon::parse($schedule->schedule_date)->locale('id')->translatedFormat('l, d F Y') }}</span></td>
@@ -84,10 +87,23 @@
                                 <div style="height:100%;width:{{ $capacity > 0 ? min(100, ($filled / $capacity) * 100) : 0 }}%;background:#2563eb;border-radius:99px;"></div>
                             </div>
                         </td>
-                        <td><span class="admin-badge {{ $isFull ? 'badge-yellow' : 'badge-green' }}">{{ $isPast ? 'Lewat' : ($isFull ? 'Penuh / Tidak Aktif' : 'Tersedia') }}</span></td>
+                        <td><span class="admin-badge {{ $badgeClass }}">{{ $statusLabel }}</span></td>
+                        <td>
+                            @if (!$isPast)
+                                <form action="{{ route('admin.schedules.status', $schedule->schedule_id) }}" method="POST" style="margin:0;">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="admin-btn admin-btn-outline" style="padding:6px 10px;font-size:11px;">
+                                        {{ $isClosed ? 'Buka Jadwal' : 'Tutup Jadwal' }}
+                                    </button>
+                                </form>
+                            @else
+                                <span class="admin-muted">—</span>
+                            @endif
+                        </td>
                     </tr>
                 @empty
-                    <tr><td colspan="4"><div class="admin-empty"><strong>Belum ada jadwal</strong>Gunakan form di atas untuk menambahkan jadwal servis.</div></td></tr>
+                    <tr><td colspan="5"><div class="admin-empty"><strong>Belum ada jadwal</strong>Gunakan form di atas untuk menambahkan jadwal servis.</div></td></tr>
                 @endforelse
             </tbody>
         </table>

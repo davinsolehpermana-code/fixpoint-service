@@ -11,11 +11,29 @@ return new class extends Migration
         Schema::create('payments', function (Blueprint $table) {
             $table->id('payment_id');
 
-            $table->unsignedBigInteger('customer_id');
-            $table->unsignedBigInteger('service_record_id');
-            $table->unsignedBigInteger('processed_by');
+            $table->foreignId('customer_id')
+                  ->constrained('customers', 'customer_id')
+                  ->cascadeOnDelete();
+
+            // Relasi utama: satu booking hanya punya satu pembayaran.
+            $table->foreignId('booking_id')
+                  ->nullable()
+                  ->unique()
+                  ->constrained('bookings', 'booking_id')
+                  ->cascadeOnDelete();
+
+            $table->foreignId('service_record_id')
+                  ->nullable()
+                  ->constrained('service_records', 'service_record_id')
+                  ->cascadeOnDelete();
+
+            $table->foreignId('processed_by')
+                  ->nullable()
+                  ->constrained('users', 'user_id')
+                  ->restrictOnDelete();
 
             $table->decimal('amount', 12, 2);
+            $table->decimal('cash_received', 12, 2)->nullable();
 
             $table->enum('payment_method', [
                 'QRIS',
@@ -24,29 +42,15 @@ return new class extends Migration
 
             $table->enum('payment_status', [
                 'UNPAID',
+                'WAITING_VERIFICATION',
                 'PAID'
             ])->default('UNPAID');
 
+            $table->string('payment_proof')->nullable();
             $table->dateTime('payment_date')->nullable();
-
             $table->text('notes')->nullable();
 
             $table->timestamps();
-
-            $table->foreign('customer_id')
-                  ->references('customer_id')
-                  ->on('customers')
-                  ->cascadeOnDelete();
-
-            $table->foreign('service_record_id')
-                  ->references('service_record_id')
-                  ->on('service_records')
-                  ->cascadeOnDelete();
-
-            $table->foreign('processed_by')
-                  ->references('user_id')
-                  ->on('users')
-                  ->restrictOnDelete();
         });
     }
 

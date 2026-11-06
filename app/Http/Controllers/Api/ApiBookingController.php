@@ -144,8 +144,13 @@ class ApiBookingController extends Controller
                     'payment_date' => now(),
                 ]);
 
-                // 8. Increment Kuota Jadwal
+                // 8. Increment Kuota Jadwal dan tandai FULL bila kuota habis
                 $schedule->increment('current_booking');
+                $schedule->refresh();
+
+                if ($schedule->status === 'AVAILABLE' && (int) $schedule->current_booking >= (int) $schedule->max_booking) {
+                    $schedule->update(['status' => 'FULL']);
+                }
 
                 return response()->json([
                     'success' => true,

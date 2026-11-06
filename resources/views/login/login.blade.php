@@ -43,11 +43,11 @@
                 <label class="form-label">Role</label>
                 <div class="role-grid">
                     <div class="role-option">
-                        <input type="radio" id="roleAdmin" name="role" value="admin" checked>
+                        <input type="radio" id="roleAdmin" name="role" value="admin" {{ old('role', 'admin') === 'admin' ? 'checked' : '' }}>
                         <label for="roleAdmin">Admin</label>
                     </div>
                     <div class="role-option">
-                        <input type="radio" id="rolePemilik" name="role" value="pemilik">
+                        <input type="radio" id="rolePemilik" name="role" value="pemilik" {{ old('role') === 'pemilik' ? 'checked' : '' }}>
                         <label for="rolePemilik">Pemilik Usaha</label>
                     </div>
                 </div>

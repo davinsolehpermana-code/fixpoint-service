@@ -37,12 +37,42 @@ class AdminPanelController extends Controller
             ->leftJoin('service_records as sr', 'sr.booking_id', '=', 'b.booking_id')
             ->leftJoin('payments as p', 'p.booking_id', '=', 'b.booking_id')
             ->select([
-                'b.booking_id', 'b.service_id_code', 'b.status as booking_status', 'b.created_at',
-                'c.name as customer_name', 'd.device_type', 'd.brand',
-                'sr.service_status', 'p.payment_status', 'p.payment_method', 'p.amount',
+                'b.booking_id',
+                'b.service_id_code',
+                'b.status as booking_status',
+                'b.created_at',
+                'c.name as customer_name',
+                'd.device_type',
+                'd.brand',
+                'd.complaint',
+                'sr.service_status',
+                'p.payment_status',
+                'p.payment_method',
+                'p.amount',
             ])
             ->orderByDesc('b.created_at')
             ->limit(7)
+            ->get();
+
+        $recentQrisProofs = DB::table('payments as p')
+            ->join('bookings as b', 'b.booking_id', '=', 'p.booking_id')
+            ->leftJoin('customers as c', 'c.customer_id', '=', 'b.customer_id')
+            ->leftJoin('devices as d', 'd.device_id', '=', 'b.device_id')
+            ->where('p.payment_method', 'QRIS')
+            ->whereNotNull('p.payment_proof')
+            ->where('p.payment_proof', '<>', '')
+            ->select([
+                'p.payment_id',
+                'p.amount',
+                'p.payment_status',
+                'p.payment_proof',
+                'b.service_id_code',
+                'c.name as customer_name',
+                'd.device_type',
+                'd.brand',
+            ])
+            ->orderByDesc('p.payment_date')
+            ->limit(6)
             ->get();
 
         $upcomingSchedules = DB::table('schedules')
@@ -52,7 +82,7 @@ class AdminPanelController extends Controller
             ->limit(5)
             ->get();
 
-        return view('admin.dashboard-admin', compact('stats', 'recentBookings', 'upcomingSchedules'));
+        return view('admin.dashboard-admin', compact('stats', 'recentBookings', 'upcomingSchedules', 'recentQrisProofs'));
     }
 
     public function schedules()
@@ -102,6 +132,39 @@ class AdminPanelController extends Controller
         return redirect()->route('admin.schedules.index')->with('success', 'Jadwal servis berhasil ditambahkan.');
     }
 
+    /**
+     * Buka/tutup jadwal. Jadwal yang ditutup tetap tampil di halaman ketersediaan
+     * dengan status CLOSED, bukan dihapus dari daftar.
+     */
+    public function updateScheduleStatus(int $scheduleId)
+    {
+        $schedule = DB::table('schedules')->where('schedule_id', $scheduleId)->first();
+
+        if (!$schedule) {
+            return back()->with('error', 'Jadwal servis tidak ditemukan.');
+        }
+
+        if ($schedule->status === 'CLOSED') {
+            // Saat dibuka lagi, status mengikuti sisa kuota: FULL bila sudah penuh.
+            $isFull = (int) $schedule->current_booking >= (int) $schedule->max_booking;
+            $newStatus = $isFull ? 'FULL' : 'AVAILABLE';
+        } else {
+            $newStatus = 'CLOSED';
+        }
+
+        DB::table('schedules')->where('schedule_id', $scheduleId)->update([
+            'status' => $newStatus,
+            'updated_at' => now(),
+        ]);
+
+        return redirect()->route('admin.schedules.index')->with(
+            'success',
+            $newStatus === 'CLOSED'
+                ? 'Jadwal servis ditutup. Pelanggan masih melihat jadwal ini dengan status Ditutup.'
+                : 'Jadwal servis dibuka kembali dengan status ' . ($newStatus === 'FULL' ? 'Penuh' : 'Tersedia') . '.'
+        );
+    }
+
     public function serviceProcess(Request $request)
     {
         $statusFilter = $request->query('status', 'active');
@@ -113,13 +176,28 @@ class AdminPanelController extends Controller
             ->leftJoin('service_records as sr', 'sr.booking_id', '=', 'b.booking_id')
             ->leftJoin('payments as p', 'p.booking_id', '=', 'b.booking_id')
             ->select([
-                'b.booking_id', 'b.service_id_code', 'b.status as booking_status', 'b.booking_date',
-                'c.name as customer_name', 'c.phone_number',
-                'd.device_type', 'd.brand', 'd.model', 'd.complaint',
+                'b.booking_id',
+                'b.service_id_code',
+                'b.status as booking_status',
+                'b.booking_date',
+                'c.name as customer_name',
+                'c.phone_number',
+                'd.device_type',
+                'd.brand',
+                'd.model',
+                'd.complaint',
                 's.name as service_name',
-                'sr.service_record_id', 'sr.diagnosis', 'sr.estimated_cost', 'sr.final_cost',
-                'sr.service_status', 'sr.service_notes', 'sr.started_at', 'sr.completed_at',
-                'p.payment_method', 'p.payment_status', 'p.amount as payment_amount',
+                'sr.service_record_id',
+                'sr.diagnosis',
+                'sr.estimated_cost',
+                'sr.final_cost',
+                'sr.service_status',
+                'sr.service_notes',
+                'sr.started_at',
+                'sr.completed_at',
+                'p.payment_method',
+                'p.payment_status',
+                'p.amount as payment_amount',
             ]);
 
         if ($statusFilter === 'waiting') {
@@ -157,8 +235,15 @@ class AdminPanelController extends Controller
                 $query->whereNull('p.payment_status')->orWhere('p.payment_status', '!=', 'PAID');
             })
             ->select([
-                'b.service_id_code', 'c.name as customer_name', 'd.device_type', 'd.brand',
-                'sr.service_status', 'sr.diagnosis', 'sr.estimated_cost', 'sr.final_cost', 'sr.service_notes',
+                'b.service_id_code',
+                'c.name as customer_name',
+                'd.device_type',
+                'd.brand',
+                'sr.service_status',
+                'sr.diagnosis',
+                'sr.estimated_cost',
+                'sr.final_cost',
+                'sr.service_notes',
                 'p.payment_method',
             ])
             ->orderByDesc('b.created_at')
@@ -173,7 +258,9 @@ class AdminPanelController extends Controller
 
         $customers = DB::table('customers as c')
             ->select([
-                'c.customer_id', 'c.name', 'c.phone_number', 'c.email', 'c.address',
+                'c.customer_id',
+                'c.name',
+                'c.phone_number',
             ])
             ->selectSub(function ($query) {
                 $query->from('devices as d')
@@ -205,8 +292,13 @@ class AdminPanelController extends Controller
         $devices = DB::table('devices as d')
             ->join('customers as c', 'c.customer_id', '=', 'd.customer_id')
             ->select([
-                'd.device_id', 'd.device_type', 'd.brand', 'd.model', 'd.complaint',
-                'c.name as customer_name', 'c.phone_number',
+                'd.device_id',
+                'd.device_type',
+                'd.brand',
+                'd.model',
+                'd.complaint',
+                'c.name as customer_name',
+                'c.phone_number',
             ])
             ->selectSub(function ($query) {
                 $query->from('bookings as b')
@@ -310,12 +402,22 @@ class AdminPanelController extends Controller
             ->leftJoin('customers as c', 'c.customer_id', '=', 'p.customer_id')
             ->leftJoin('devices as d', 'd.device_id', '=', 'b.device_id')
             ->select([
-                'p.payment_id', 'p.booking_id', 'p.amount', 'p.payment_method', 'p.payment_status', 'p.payment_date',
-                'b.service_id_code', 'b.status as booking_status',
-                'c.name as customer_name', 'd.brand', 'd.device_type',
+                'p.payment_id',
+                'p.booking_id',
+                'p.amount',
+                'p.payment_method',
+                'p.payment_status',
+                'p.payment_date',
+                'p.payment_proof',
+                'p.cash_received',
+                'b.service_id_code',
+                'b.status as booking_status',
+                'c.name as customer_name',
+                'd.brand',
+                'd.device_type',
             ])
-            ->when($status === 'paid', fn ($query) => $query->where('p.payment_status', 'PAID'))
-            ->when($status === 'unpaid', fn ($query) => $query->where('p.payment_status', '!=', 'PAID'))
+            ->when($status === 'paid', fn($query) => $query->where('p.payment_status', 'PAID'))
+            ->when($status === 'unpaid', fn($query) => $query->where('p.payment_status', '!=', 'PAID'))
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($subQuery) use ($search) {
                     $subQuery->where('b.service_id_code', 'like', '%' . $search . '%')
@@ -329,34 +431,207 @@ class AdminPanelController extends Controller
         return view('admin.pembayaran', compact('payments', 'status', 'search'));
     }
 
-    public function serviceHistory(Request $request)
+    /**
+     * Halaman struk yang dapat dicetak Admin (termasuk printer thermal 80mm).
+     * Pelanggan hanya melihat rincian pembayaran di halaman cek status.
+     */
+    public function paymentReceipt(int $paymentId)
     {
-        $search = trim((string) $request->query('q', ''));
-
-        $records = DB::table('service_records as sr')
-            ->join('bookings as b', 'b.booking_id', '=', 'sr.booking_id')
+        $payment = DB::table('payments as p')
+            ->join('bookings as b', 'b.booking_id', '=', 'p.booking_id')
             ->leftJoin('customers as c', 'c.customer_id', '=', 'b.customer_id')
             ->leftJoin('devices as d', 'd.device_id', '=', 'b.device_id')
             ->leftJoin('services as s', 's.service_id', '=', 'b.service_id')
-            ->leftJoin('payments as p', 'p.booking_id', '=', 'b.booking_id')
-            ->where('sr.service_status', 'COMPLETED')
+            ->leftJoin('users as u', 'u.user_id', '=', 'p.processed_by')
+            ->where('p.payment_id', $paymentId)
             ->select([
-                'sr.service_record_id', 'sr.diagnosis', 'sr.estimated_cost', 'sr.final_cost', 'sr.service_notes', 'sr.started_at', 'sr.completed_at',
-                'b.service_id_code', 'b.booking_date',
-                'c.name as customer_name', 'd.device_type', 'd.brand', 'd.model', 's.name as service_name',
-                'p.payment_method', 'p.payment_status',
+                'p.payment_id',
+                'p.amount',
+                'p.payment_method',
+                'p.payment_status',
+                'p.payment_date',
+                'p.cash_received',
+                'b.booking_id',
+                'b.service_id_code',
+                'b.booking_date',
+                'c.customer_id as customer_code',
+                'c.name as customer_name',
+                'c.phone_number',
+                'd.device_type',
+                'd.brand',
+                'd.model',
+                's.name as service_name',
+                'u.email as admin_email',
             ])
-            ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($subQuery) use ($search) {
-                    $subQuery->where('b.service_id_code', 'like', '%' . $search . '%')
-                        ->orWhere('c.name', 'like', '%' . $search . '%')
-                        ->orWhere('d.brand', 'like', '%' . $search . '%');
-                });
-            })
-            ->orderByDesc('sr.completed_at')
-            ->paginate(15)
-            ->withQueryString();
+            ->first();
 
-        return view('admin.riwayat-servis', compact('records', 'search'));
+        abort_unless($payment, 404);
+
+        // Struk adalah bukti pembayaran, jadi hanya tersedia setelah lunas.
+        if ($payment->payment_status !== 'PAID') {
+            return redirect()
+                ->route('admin.payments')
+                ->with('error', 'Struk hanya dapat dicetak setelah pembayaran dikonfirmasi lunas.');
+        }
+
+        $serviceRecord = DB::table('service_records')
+            ->where('booking_id', $payment->booking_id)
+            ->orderByDesc('service_record_id')
+            ->first();
+
+        return view('admin.struk-pembayaran', compact('payment', 'serviceRecord'));
+    }
+
+    /**
+     * Membatalkan booking dari sisi Admin. Slot jadwal dikembalikan dalam
+     * transaksi yang sama agar kuota jadwal tetap akurat.
+     */
+    public function cancelBooking(Request $request, int $id): \Illuminate\Http\RedirectResponse
+    {
+        $validated = $request->validate([
+            'cancellation_reason' => ['required', 'string', 'max:500'],
+        ], [
+            'cancellation_reason.required' => 'Alasan pembatalan wajib diisi.',
+            'cancellation_reason.max' => 'Alasan pembatalan maksimal 500 karakter.',
+        ]);
+
+        $error = DB::transaction(function () use ($id, $validated) {
+            $booking = DB::table('bookings')
+                ->where('booking_id', $id)
+                ->lockForUpdate()
+                ->first();
+
+            abort_unless($booking, 404);
+
+            if (!in_array($booking->status, ['PENDING', 'WAITING_VERIFICATION', 'CONFIRMED'], true)) {
+                return 'Booking tidak dapat dibatalkan pada status saat ini.';
+            }
+
+            $serviceStatus = DB::table('service_records')
+                ->where('booking_id', $booking->booking_id)
+                ->orderByDesc('service_record_id')
+                ->value('service_status');
+
+            if (in_array($serviceStatus, ['PROCESS', 'COMPLETED'], true)) {
+                return 'Booking yang sudah dikerjakan atau selesai tidak dapat dibatalkan.';
+            }
+
+            DB::table('bookings')
+                ->where('booking_id', $booking->booking_id)
+                ->update([
+                    'status' => 'CANCELLED',
+                    'cancellation_reason' => $validated['cancellation_reason'],
+                    'updated_at' => now(),
+                ]);
+
+            if ($booking->schedule_id) {
+                $schedule = DB::table('schedules')
+                    ->where('schedule_id', $booking->schedule_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($schedule && $schedule->current_booking > 0) {
+                    DB::table('schedules')
+                        ->where('schedule_id', $schedule->schedule_id)
+                        ->decrement('current_booking');
+                }
+            }
+
+            return null;
+        });
+
+        if ($error !== null) {
+            return back()->with('error', $error);
+        }
+
+        return back()->with('success', 'Booking berhasil dibatalkan. Slot jadwal telah dikembalikan.');
+    }
+
+    /**
+     * Konfirmasi pembayaran secara manual oleh Admin.
+     * QRIS hanya boleh dilunasi setelah bukti diunggah dan berstatus menunggu verifikasi.
+     */
+    public function markPaid(Request $request, int $id): \Illuminate\Http\RedirectResponse
+    {
+        $error = DB::transaction(function () use ($id, $request) {
+            $booking = DB::table('bookings')
+                ->where('booking_id', $id)
+                ->lockForUpdate()
+                ->first();
+
+            abort_unless($booking, 404);
+
+            if ($booking->status !== 'COMPLETED') {
+                return 'Pembayaran hanya dapat dikonfirmasi setelah servis selesai.';
+            }
+
+            $payment = DB::table('payments')
+                ->where('booking_id', $booking->booking_id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$payment) {
+                return 'Data pembayaran untuk booking ini belum tersedia.';
+            }
+
+            if ($payment->payment_status === 'PAID') {
+                return 'Pembayaran ini sudah berstatus lunas.';
+            }
+
+            if (!in_array($payment->payment_method, ['CASH', 'QRIS'], true)) {
+                return 'Metode pembayaran tidak valid.';
+            }
+
+            if (!is_numeric($payment->amount) || (float) $payment->amount <= 0) {
+                return 'Nominal tagihan belum valid.';
+            }
+
+            $cashReceived = null;
+
+            if ($payment->payment_method === 'QRIS') {
+                if (
+                    $payment->payment_status !== 'WAITING_VERIFICATION'
+                    || !filled($payment->payment_proof)
+                ) {
+                    return 'QRIS hanya dapat dikonfirmasi setelah bukti pembayaran diunggah dan menunggu verifikasi.';
+                }
+            } else {
+                // Cash wajib mencatat uang yang benar-benar diterima agar struk
+                // pelanggan menampilkan nominal bayar dan kembalian yang tepat.
+                $cashInput = $request->input('cash_received');
+
+                if ($cashInput === null || $cashInput === '') {
+                    return 'Uang tunai yang diterima wajib diisi saat mengonfirmasi pembayaran cash.';
+                }
+
+                if (!is_numeric($cashInput)) {
+                    return 'Nominal uang tunai yang dimasukkan tidak valid.';
+                }
+
+                $cashReceived = round((float) $cashInput, 2);
+
+                if ($cashReceived < (float) $payment->amount) {
+                    return 'Uang tunai yang diterima kurang dari total tagihan.';
+                }
+            }
+
+            DB::table('payments')
+                ->where('payment_id', $payment->payment_id)
+                ->update([
+                    'payment_status' => 'PAID',
+                    'processed_by' => auth()->id(),
+                    'payment_date' => now(),
+                    'cash_received' => $cashReceived,
+                    'updated_at' => now(),
+                ]);
+
+            return null;
+        });
+
+        if ($error !== null) {
+            return back()->with('error', $error);
+        }
+
+        return back()->with('success', 'Pembayaran berhasil dikonfirmasi lunas.');
     }
 }
