@@ -134,11 +134,19 @@ class StatusController extends Controller
     {
         $validated = $request->validate([
             'service_id_code' => ['required', 'string', 'exists:bookings,service_id_code'],
-            'payment_proof' => ['required', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'payment_proof' => [
+                'required',
+                'file',
+                'image',
+                'mimes:jpeg,png,jpg,webp',
+                'mimetypes:image/jpeg,image/png,image/webp',
+                'max:2048',
+            ],
         ], [
             'payment_proof.required' => 'Wajib melampirkan foto bukti pembayaran.',
             'payment_proof.image' => 'File bukti pembayaran harus berupa gambar.',
             'payment_proof.mimes' => 'Format gambar hanya boleh JPG, JPEG, PNG, atau WEBP.',
+            'payment_proof.mimetypes' => 'Isi file harus benar-benar berupa gambar JPG, PNG, atau WEBP.',
             'payment_proof.max' => 'Ukuran bukti pembayaran maksimal 2 MB.',
         ]);
 
