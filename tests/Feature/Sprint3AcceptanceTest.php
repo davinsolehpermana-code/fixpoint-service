@@ -192,7 +192,7 @@ class Sprint3AcceptanceTest extends TestCase
             'email' => $owner->email,
             'password' => 'password123',
             'role' => 'admin',
-        ])->assertRedirect('/login')->assertSessionHasErrors('email');
+        ])->assertRedirect('/login')->assertSessionHasErrors('role');
 
         $this->assertGuest();
     }
