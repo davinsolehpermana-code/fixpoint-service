@@ -1,0 +1,58 @@
+%% Sequence Diagram — Pemilik Usaha memantau operasional dan pembayaran
+%% Sumber implementasi: route /dashboard-pemilik, ReportController@serviceHistory/income,
+%% PaymentProofController@show, routes/web.php grup role:PEMILIK_USAHA
+
+sequenceDiagram
+    autonumber
+    actor P as Pemilik Usaha
+    participant MW as Middleware auth + role:PEMILIK_USAHA
+    participant D as Dashboard Pemilik
+    participant RC as ReportController
+    participant PC as PaymentProofController
+    participant DB as Database MySQL
+
+    P->>MW: POST /login (email, password, role pemilik)
+    MW-->>P: Redirect /dashboard-pemilik
+
+    P->>MW: GET /dashboard-pemilik?date=YYYY-MM-DD
+    MW->>D: Render dashboard
+    D->>DB: COUNT service_records PROCESS (aktif)
+    D->>DB: COUNT bookings PENDING/WAITING_VERIFICATION/CONFIRMED (menunggu)
+    D->>DB: COUNT bookings COMPLETED
+    D->>DB: COUNT payments belum PAID untuk booking COMPLETED
+    D->>DB: SELECT bookings + customer + device + service_record + payment
+    D->>DB: SELECT riwayat servis COMPLETED (filter completed_at bila tanggal dipilih)
+    D->>DB: SELECT bukti QRIS terbaru (filter booking_date bila tanggal dipilih)
+    D-->>P: Statistik, monitoring servis, riwayat, bukti pembayaran (read-only)
+
+    opt Melihat bukti pembayaran QRIS
+        P->>PC: GET /pemilik/pembayaran/{paymentId}/bukti
+        PC->>DB: SELECT payment
+        alt QRIS dan file ada
+            PC-->>P: Stream gambar inline (private, no-store)
+        else Tidak valid
+            PC-->>P: 404
+        end
+    end
+
+    opt Riwayat servis lengkap
+        P->>RC: GET /pemilik/riwayat-servis?from=&to=&q=
+        RC->>DB: Query service_records COMPLETED + filter rentang tanggal
+        RC-->>P: Tabel + ringkasan total servis & biaya
+        opt Unduh
+            P->>RC: GET /pemilik/riwayat-servis/pdf atau /excel
+            RC-->>P: Berkas PDF / XLSX
+        end
+    end
+
+    opt Laporan pemasukan
+        P->>RC: GET /pemilik/laporan-pemasukan?from=&to=&method=
+        RC->>DB: SUM(amount) WHERE payment_status = PAID
+        RC-->>P: Ringkasan total, CASH, QRIS, jumlah transaksi
+        opt Unduh
+            P->>RC: GET /pemilik/laporan-pemasukan/pdf atau /excel
+            RC-->>P: Berkas PDF / XLSX
+        end
+    end
+
+    Note over P,DB: Pemilik tidak memiliki akses ke /admin/* (403) dan tidak dapat mengubah data.

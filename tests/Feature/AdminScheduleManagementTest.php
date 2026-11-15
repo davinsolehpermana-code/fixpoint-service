@@ -317,4 +317,37 @@ class AdminScheduleManagementTest extends TestCase
         $this->assertSame(2, (int) $schedule->fresh()->current_booking);
         $this->assertSame('FULL', $schedule->fresh()->status);
     }
+
+    public function test_sch_13_edit_cepat_slot_dan_jam_tersedia_di_daftar_jadwal(): void
+    {
+        $admin = $this->makeUser('ADMIN', 'sch13@fixpoint.test');
+        $this->makeSchedule();
+
+        $this->actingAs($admin)
+            ->get(route('admin.schedules.index'))
+            ->assertOk()
+            ->assertSee('Edit cepat')
+            ->assertSee('data-quick-edit', false)
+            ->assertSee('name="max_booking"', false);
+    }
+
+    public function test_sch_14_edit_cepat_slot_dan_jam_tersimpan(): void
+    {
+        $admin = $this->makeUser('ADMIN', 'sch14@fixpoint.test');
+        $schedule = $this->makeSchedule();
+
+        $this->actingAs($admin)
+            ->put(route('admin.schedules.update', $schedule->schedule_id), $this->payload($schedule, [
+                'start_time' => '08:00',
+                'end_time' => '10:00',
+                'max_booking' => 9,
+            ]))
+            ->assertRedirect(route('admin.schedules.index'))
+            ->assertSessionHas('success', fn (string $message) => str_contains($message, 'Kapasitas 9 slot'));
+
+        $fresh = $schedule->fresh();
+        $this->assertSame('08:00:00', $fresh->start_time);
+        $this->assertSame('10:00:00', $fresh->end_time);
+        $this->assertSame(9, (int) $fresh->max_booking);
+    }
 }

@@ -1,0 +1,79 @@
+@startuml activity-proses-servis-admin
+title Activity Diagram — Admin Memproses Servis dan Pembayaran
+
+|Admin|
+start
+:Login sebagai Admin;
+:Buka menu Kelola Proses Servis;
+:Pilih booking berstatus CONFIRMED;
+:Isi diagnosis dan estimasi biaya;
+:Simpan sebagai DIAGNOSIS;
+
+|Sistem|
+:Validasi input dan transisi status
+(tidak boleh mundur);
+:Simpan diagnosis dan estimasi biaya;
+:Tampilkan status servis terbaru;
+
+|Admin|
+:Mulai pengerjaan;
+:Ubah status menjadi PROCESS;
+
+|Sistem|
+:Catat started_at bila belum ada;
+:Simpan status PROCESS;
+
+|Admin|
+if (Servis selesai?) then (ya)
+  :Isi biaya akhir dan catatan;
+  :Ubah status menjadi COMPLETED;
+  |Sistem|
+  if (Biaya akhir > 0?) then (tidak)
+    :Tolak penyelesaian;
+    stop
+  else (ya)
+    :Simpan final_cost dan completed_at;
+    :Ubah status booking menjadi COMPLETED;
+    :Set amount pembayaran = final_cost;
+    :Tampilkan tagihan pada halaman pembayaran;
+  endif
+else (belum)
+  :Kembali ke daftar proses servis;
+  stop
+endif
+
+|Admin|
+:Buka menu Pembayaran;
+:Pilih tagihan pelanggan;
+if (Metode pembayaran?) then (CASH)
+  :Masukkan uang tunai yang diterima;
+  |Sistem|
+  if (Uang diterima >= tagihan?) then (tidak)
+    :Tolak konfirmasi;
+    stop
+  else (ya)
+    :Simpan cash_received;
+  endif
+else (QRIS)
+  |Admin|
+  :Buka bukti pembayaran QRIS;
+  |Sistem|
+  if (Status WAITING_VERIFICATION dan bukti ada?) then (tidak)
+    :Tolak konfirmasi;
+    :Admin dapat meminta upload ulang;
+    stop
+  else (ya)
+  endif
+endif
+
+|Sistem|
+:Ubah status pembayaran menjadi PAID;
+:Catat processed_by dan payment_date;
+:Commit transaksi;
+:Tampilkan status lunas;
+
+|Admin|
+:Cetak struk pembayaran (opsional);
+stop
+
+@enduml

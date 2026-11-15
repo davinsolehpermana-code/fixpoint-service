@@ -29,6 +29,18 @@
     .fp-modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;flex-wrap:wrap}
     .fp-modal-foot form{margin:0}
     @media(max-width:520px){.fp-modal-foot{flex-direction:column-reverse}.fp-modal-foot .admin-btn,.fp-modal-foot form,.fp-modal-foot form .admin-btn{width:100%}}
+    .fp-schedule-table{min-width:1040px}
+    .fp-quick-edit{display:inline-block}
+    .fp-quick-edit summary{cursor:pointer;color:#2563eb;font-weight:800;font-size:11px;list-style:none;display:inline-flex;align-items:center;gap:4px}
+    .fp-quick-edit summary::-webkit-details-marker{display:none}
+    .fp-quick-edit summary::after{content:"▾";font-size:10px}
+    .fp-quick-edit[open] summary::after{content:"▴"}
+    .fp-quick-form{display:flex;flex-direction:column;gap:6px;margin-top:8px;min-width:186px}
+    .fp-quick-form label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10.5px;font-weight:750;color:#475569}
+    .fp-quick-form input[type=time],.fp-quick-form input[type=number]{width:98px;padding:4px 6px;border:1px solid #d8dee8;border-radius:6px;font-size:11px;color:#0f172a;background:#fff}
+    .fp-quick-form input[readonly]{background:#f8fafc;color:#64748b}
+    .fp-quick-save{padding:5px 9px;font-size:10.5px;border-radius:7px}
+    .fp-quick-note{font-size:10px;color:#92400e;line-height:1.4}
 </style>
 
 <nav class="fp-breadcrumb" aria-label="Breadcrumb">
@@ -101,9 +113,9 @@
         <span class="admin-badge badge-blue">{{ $schedules->total() }} jadwal</span>
     </div>
     <div class="admin-table-wrap">
-        <table class="admin-table">
+        <table class="admin-table fp-schedule-table">
             <thead>
-                <tr><th>Tanggal</th><th>Waktu</th><th>Kuota Terisi</th><th>Status</th><th>Aksi</th></tr>
+                <tr><th>Tanggal</th><th>Waktu</th><th>Kuota Terisi</th><th>Status</th><th>Edit Cepat</th><th>Aksi</th></tr>
             </thead>
             <tbody>
                 @forelse($schedules as $schedule)
@@ -131,6 +143,35 @@
                         </td>
                         <td><span class="admin-badge {{ $badgeClass }}">{{ $statusLabel }}</span></td>
                         <td>
+                            @unless($isPast)
+                                <details class="fp-quick-edit" data-quick-edit>
+                                    <summary>Edit cepat</summary>
+                                    <form action="{{ route('admin.schedules.update', $schedule->schedule_id) }}" method="POST" class="fp-quick-form" data-guard-submit>
+                                        @csrf
+                                        @method('PUT')
+                                        <input type="hidden" name="schedule_date" value="{{ substr((string) $schedule->schedule_date, 0, 10) }}">
+                                        <label>Mulai
+                                            <input type="time" name="start_time" value="{{ substr((string) $schedule->start_time, 0, 5) }}"
+                                                @if($relatedBookings > 0) readonly title="Jam dikunci karena jadwal sudah memiliki booking" @endif required>
+                                        </label>
+                                        <label>Selesai
+                                            <input type="time" name="end_time" value="{{ substr((string) $schedule->end_time, 0, 5) }}"
+                                                @if($relatedBookings > 0) readonly @endif required>
+                                        </label>
+                                        <label>Slot
+                                            <input type="number" name="max_booking" min="{{ max(1, $filled) }}" max="100" value="{{ $capacity }}" required>
+                                        </label>
+                                        <button type="submit" class="admin-btn admin-btn-primary fp-quick-save">Simpan</button>
+                                        @if($relatedBookings > 0)
+                                            <span class="fp-quick-note">Jam terkunci karena sudah ada {{ $relatedBookings }} booking.</span>
+                                        @endif
+                                    </form>
+                                </details>
+                            @else
+                                <span class="admin-muted">—</span>
+                            @endunless
+                        </td>
+                        <td>
                             <div class="admin-inline-actions">
                                 @unless($isPast)
                                     <a href="{{ route('admin.schedules.edit', $schedule->schedule_id) }}" class="admin-btn admin-btn-outline" style="padding:6px 10px;font-size:11px;">Edit</a>
@@ -153,7 +194,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="5"><div class="admin-empty"><strong>Belum ada jadwal</strong>Gunakan form di atas untuk menambahkan jadwal servis.</div></td></tr>
+                    <tr><td colspan="6"><div class="admin-empty"><strong>Belum ada jadwal</strong>Gunakan form di atas untuk menambahkan jadwal servis.</div></td></tr>
                 @endforelse
             </tbody>
         </table>

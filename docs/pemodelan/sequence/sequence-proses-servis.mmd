@@ -1,0 +1,61 @@
+%% Sequence Diagram — Admin mencatat diagnosis, biaya, dan status servis
+%% Sumber implementasi: BookingController@updateBookingStatus,
+%% route POST /admin/booking/update, view admin/kelola-proses-servis.blade.php
+
+sequenceDiagram
+    autonumber
+    actor A as Admin
+    participant MW as Middleware role:ADMIN
+    participant BC as BookingController
+    participant V as Validator
+    participant DB as Database MySQL
+    participant B as bookings
+    participant SR as service_records
+    participant P as payments
+
+    A->>MW: POST /admin/booking/update
+    MW->>BC: updateBookingStatus(request)
+    BC->>V: validate(service_id_code, service_status, diagnosis, estimated_cost, final_cost, service_notes)
+    alt Validasi gagal
+        V-->>A: Pesan error (mis. biaya melebihi batas kolom)
+    else Valid
+        BC->>DB: BEGIN TRANSACTION
+        BC->>B: SELECT booking FOR UPDATE (by service_id_code)
+
+        alt Status booking bukan CONFIRMED/COMPLETED
+            BC-->>A: Error "terima booking terlebih dahulu"
+        else Status valid
+            BC->>SR: SELECT service_record FOR UPDATE
+            opt Catatan servis belum ada
+                BC->>SR: INSERT service_record (handled_by admin, status PENDING)
+            end
+            BC->>P: SELECT payment FOR UPDATE
+
+            alt Payment belum ada
+                BC-->>A: Error "data pembayaran tidak ditemukan"
+            else Payment sudah PAID
+                BC-->>A: Error "servis yang sudah dibayar tidak dapat diubah"
+            else Status servis mundur
+                BC-->>A: Error "status tidak dapat dikembalikan"
+            else COMPLETED tanpa final_cost / final_cost <= 0
+                BC-->>A: Error "masukkan biaya akhir"
+            else Valid
+                BC->>SR: update diagnosis, estimated_cost, service_status
+                opt Status PROCESS dan started_at kosong
+                    BC->>SR: started_at = now()
+                end
+                opt Status COMPLETED
+                    BC->>SR: final_cost, completed_at = now()
+                end
+                BC->>SR: service_notes = estimasi durasi + catatan
+                BC->>SR: SAVE
+
+                BC->>B: status = COMPLETED (atau CONFIRMED), handled_by
+                opt Status COMPLETED
+                    BC->>P: service_record_id, amount = final_cost, status tetap UNPAID
+                end
+                BC->>DB: COMMIT
+                BC-->>A: Redirect + "diagnosis & status servis diperbarui"
+            end
+        end
+    end

@@ -1,0 +1,91 @@
+@startuml activity-kelola-jadwal-admin
+title Activity Diagram — Admin Mengelola Jadwal Servis
+
+|Admin|
+start
+:Login sebagai Admin;
+:Buka menu Jadwal Servis;
+:Pilih tindakan;
+
+|Sistem|
+if (Tindakan?) then (Tambah jadwal)
+  |Admin|
+  :Isi tanggal, jam mulai, jam selesai,
+  dan jumlah slot;
+  |Sistem|
+  :Validasi tanggal >= hari ini,
+  jam selesai > jam mulai, slot >= 1;
+  :Cek bentrok dengan jadwal lain
+  pada tanggal yang sama;
+  if (Bentrok?) then (ya)
+    :Tampilkan pesan bentrok;
+    stop
+  else (tidak)
+    :Simpan jadwal baru dengan
+    status AVAILABLE dan current_booking 0;
+    :Tampilkan daftar jadwal terbaru;
+    stop
+  endif
+
+elseif (Edit jadwal)
+  |Admin|
+  :Klik Edit pada jadwal yang belum lewat;
+  |Sistem|
+  :Tampilkan form dengan nilai lama
+  dan ringkasan slot terpakai;
+  |Admin|
+  :Ubah tanggal, jam, jumlah slot,
+  dan/atau status;
+  |Sistem|
+  :Validasi input;
+  :Mulai transaksi dan kunci jadwal;
+  if (Slot baru < slot terpakai?) then (ya)
+    :Tolak perubahan dan tampilkan alasan;
+    stop
+  elseif (Tanggal/jam berubah dan
+  jadwal sudah punya booking?) then (ya)
+    :Tolak perubahan waktu
+    (jadwal terikat transaksi pelanggan);
+    stop
+  elseif (Bentrok dengan jadwal lain?) then (ya)
+    :Tolak perubahan dan tampilkan alasan;
+    stop
+  else (valid)
+    :Hitung ulang status AVAILABLE/FULL;
+    :Simpan perubahan ke database;
+    :Commit transaksi;
+    :Tampilkan notifikasi kapasitas dan sisa slot;
+    stop
+  endif
+
+elseif (Tutup / buka jadwal)
+  |Sistem|
+  if (Status sekarang CLOSED?) then (ya)
+    :Buka jadwal dengan status AVAILABLE
+    atau FULL sesuai sisa kuota;
+  else (tidak)
+    :Ubah status menjadi CLOSED;
+  endif
+  :Simpan perubahan;
+  stop
+
+else (Hapus jadwal)
+  |Admin|
+  :Klik Hapus dan konfirmasi pada modal;
+  |Sistem|
+  :Mulai transaksi dan kunci jadwal;
+  :Hitung booking terkait;
+  if (Ada booking?) then (ya)
+    :Tolak penghapusan dan sarankan
+    menutup jadwal;
+    :Batalkan transaksi;
+    stop
+  else (tidak)
+    :Hapus jadwal;
+    :Commit transaksi;
+    :Tampilkan notifikasi berhasil;
+    stop
+  endif
+endif
+
+@enduml

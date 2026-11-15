@@ -1,0 +1,53 @@
+%% Flowchart — Customer (tanpa akun)
+%% Berdasarkan route publik: /, /ketersediaan-jadwal, /booking, /cek-status
+
+flowchart TD
+    A([Mulai]) --> B[Buka beranda FixPoint Service]
+    B --> C{Ingin booking<br/>atau cek status?}
+
+    C -->|Booking| D[Buka halaman Booking]
+    D --> E[Pilih layanan, jadwal,<br/>dan metode pembayaran]
+    E --> F[Isi nama, telepon,<br/>perangkat, dan keluhan]
+    F --> G[Kirim booking]
+    G --> H{Validasi server<br/>berhasil?}
+
+    H -->|Tidak| I[Tampilkan pesan error<br/>per field]
+    I --> F
+
+    H -->|Ya| J{Jadwal masih tersedia?}
+    J -->|Tidak| K[Tampilkan pesan<br/>jadwal penuh / tidak tersedia]
+    K --> D
+
+    J -->|Ya| L[Sistem membuat booking PENDING<br/>dan pembayaran UNPAID]
+    L --> M[Terima Service ID<br/>FP-YYYYMMDD-XXXXX]
+    M --> N[Simpan Service ID]
+    N --> O[Buka halaman Cek Status]
+
+    C -->|Cek status| O
+    O --> P[Masukkan Service ID]
+    P --> Q{Service ID ditemukan?}
+    Q -->|Tidak| R[Tampilkan pesan<br/>Service ID tidak ditemukan]
+    R --> P
+
+    Q -->|Ya| S[Tampilkan data perangkat, jadwal,<br/>diagnosis, biaya, status servis,<br/>status pembayaran]
+
+    S --> T{Booking masih<br/>PENDING / WAITING_VERIFICATION?}
+    T -->|Ya| U{Ingin membatalkan?}
+    U -->|Ya| V[Isi alasan pembatalan]
+    V --> W[Kirim pembatalan]
+    W --> X[Status CANCELLED<br/>slot jadwal dikembalikan]
+    X --> Z([Selesai])
+    U -->|Tidak| S
+
+    T -->|Tidak| Y{Servis COMPLETED<br/>dan QRIS belum lunas?}
+    Y -->|Ya| AA[Unggah bukti pembayaran QRIS]
+    AA --> AB{File valid?}
+    AB -->|Tidak| AC[Tampilkan pesan format/ukuran]
+    AC --> AA
+    AB -->|Ya| AD[Status pembayaran<br/>WAITING_VERIFICATION]
+    AD --> S
+
+    Y -->|Tidak| AE{Status pembayaran<br/>PAID?}
+    AE -->|Ya| AF[Servis selesai dan lunas]
+    AE -->|Tidak| S
+    AF --> Z
