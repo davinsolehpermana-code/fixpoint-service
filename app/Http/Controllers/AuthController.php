@@ -59,8 +59,10 @@ class AuthController extends Controller
                 ? 'Admin'
                 : 'Pemilik Usaha';
 
+            // Kesalahan role tetap dikaitkan ke field email agar pesan tampil
+            // pada form login yang sama seperti kesalahan kredensial lainnya.
             return back()->withErrors([
-                'role' => 'Akun ini tidak memiliki akses sebagai ' . $roleName . '. Silakan pilih role yang sesuai.',
+                'email' => 'Akun ini tidak memiliki akses sebagai ' . $roleName . '. Silakan pilih role yang sesuai.',
             ])->withInput($request->only('email', 'role'));
         }
 

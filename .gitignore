@@ -25,3 +25,7 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Artefak build deployment lokal (dibuat ulang oleh prosedur build)
+deploy/release/
+deploy/dist/

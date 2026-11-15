@@ -1,0 +1,20 @@
+# FixPoint Service - .htaccess untuk folder htdocs InfinityFree
+#
+# InfinityFree memakai htdocs sebagai document root dan document root TIDAK
+# dapat diubah. Karena itu seluruh proyek Laravel diunggah ke htdocs dan file
+# ini mengarahkan semua permintaan ke folder public/ sehingga kode aplikasi
+# (.env, app/, storage/logs/) tidak dapat diakses langsung dari browser.
+#
+# Letakkan file ini di htdocs/.htaccess (bukan di htdocs/public/.htaccess).
+
+RewriteEngine On
+
+# InfinityFree tidak mendukung symlink sehingga "php artisan storage:link"
+# tidak bisa dipakai. Aturan ini memetakan /storage/... langsung ke
+# storage/app/public/... agar berkas unggahan tetap dapat dilayani.
+RewriteRule ^storage/(.*)$ /storage/app/public/$1 [END]
+
+# Semua permintaan lain diarahkan ke folder public Laravel.
+# Permintaan seperti /.env atau /storage/logs/laravel.log akan menjadi
+# /public/.env dan /public/storage/logs/laravel.log yang tidak ada (404).
+RewriteRule (.*) /public/$1 [L]
