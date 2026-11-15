@@ -58,7 +58,7 @@ Cara membuat ulang berkas tersebut (sudah dilakukan saat penyusunan):
 mysqldump -h 127.0.0.1 -u root --no-data --skip-add-drop-table --routines=false fixpoint_service > deploy/infinityfree/fixpoint_service_schema.sql
 ```
 
-Isi berkas: `CREATE TABLE` untuk `users`, `customers`, `services`, `schedules`, `devices`, `bookings`, `service_records`, `payments`, dan `personal_access_tokens`, beserta primary key, foreign key, dan indeks. Tidak ada data pelanggan yang disertakan, sehingga aman diimpor ke database baru.
+Isi berkas: 10 pernyataan `CREATE TABLE` untuk `users`, `customers`, `services`, `schedules`, `devices`, `bookings`, `service_records`, `payments`, `personal_access_tokens`, dan tabel `migrations` (tabel pembukuan bawaan Laravel), beserta primary key, 12 foreign key, dan indeks. Tidak ada data pelanggan yang disertakan, sehingga aman diimpor ke database baru.
 
 Data awal yang diperlukan setelah impor:
 
@@ -122,7 +122,7 @@ Hasil pengukuran respons lokal dicatat pada bagian 8.
 5. Unggah seluruh isi paket production ke `htdocs` sehingga `htdocs/artisan`, `htdocs/app`, `htdocs/public`, dan `htdocs/vendor` ada. FTP bawaan hosting hanya memberi satu akun; unggah `vendor` lebih dahulu lalu lanjutkan agar proses tidak terputus.
 6. Buat berkas `htdocs/.htaccess` dengan isi dari `deploy/infinityfree/htdocs.htaccess`. Berkas ini mengarahkan semua permintaan ke `public/` dan menangani `storage/` tanpa symlink.
 7. Buat `htdocs/.env` dari `deploy/infinityfree/env.production.example`, isi `APP_KEY`, data MySQL, dan `APP_URL`. Untuk `APP_KEY`, salin nilai dari `.env` lokal yang sudah memiliki `base64:...`, atau hasilkan baru dengan `php artisan key:generate --show` di komputer lokal. **Jangan menaruh nilai ini di repository atau dokumen.**
-8. Buka phpMyAdmin dari panel, pilih database, tab **Import**, unggah `deploy/infinityfree/fixpoint_service_schema.sql`, lalu jalankan. Periksa bahwa 9 tabel terbentuk dan foreign key ada.
+8. Buka phpMyAdmin dari panel, pilih database, tab **Import**, unggah `deploy/infinityfree/fixpoint_service_schema.sql`, lalu jalankan. Periksa bahwa 10 tabel terbentuk (9 tabel aplikasi + `migrations`) dan 12 foreign key ada.
 9. Jalankan `INSERT` akun Admin dan Pemilik Usaha seperti pada bagian 3.
 10. Pastikan folder `htdocs/storage/app/public/payment_proofs` ada. Bila belum, buat lewat File Manager dan beri izin tulis (755 pada folder; InfinityFree menjalankan PHP sebagai pemilik berkas).
 11. Aktifkan **Force HTTPS** pada panel (menu SSL/HTTPS) agar cookie sesi aman.
