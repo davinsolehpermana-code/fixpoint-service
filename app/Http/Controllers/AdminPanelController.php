@@ -622,13 +622,47 @@ class AdminPanelController extends Controller
 
     public function payments(Request $request)
     {
-        $status = $request->query('status', 'all');
+        $status = (string) $request->query('status', 'all');
+        $method = strtoupper((string) $request->query('method', 'ALL'));
+        $bookingStatus = strtoupper((string) $request->query('booking_status', 'ALL'));
         $search = trim((string) $request->query('q', ''));
 
-        $payments = DB::table('payments as p')
-            ->join('bookings as b', 'b.booking_id', '=', 'p.booking_id')
-            ->leftJoin('customers as c', 'c.customer_id', '=', 'p.customer_id')
-            ->leftJoin('devices as d', 'd.device_id', '=', 'b.device_id')
+        // Nilai filter dibatasi agar parameter URL tidak dipakai sembarangan.
+        if (!in_array($status, ['all', 'paid', 'unpaid'], true)) {
+            $status = 'all';
+        }
+
+        if (!in_array($method, ['ALL', 'CASH', 'QRIS', 'TRANSFER'], true)) {
+            $method = 'ALL';
+        }
+
+        if (!in_array($bookingStatus, ['ALL', 'PENDING', 'WAITING_VERIFICATION', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'REJECTED'], true)) {
+            $bookingStatus = 'ALL';
+        }
+
+        $methodFilter = $method === 'ALL' ? null : $method;
+        $bookingStatusFilter = $bookingStatus === 'ALL' ? null : $bookingStatus;
+
+        // Satu definisi filter dipakai untuk daftar dan untuk total nominal,
+        // sehingga angka total selalu sama dengan baris yang sedang tampil.
+        $filteredQuery = function () use ($status, $methodFilter, $bookingStatusFilter, $search) {
+            return DB::table('payments as p')
+                ->join('bookings as b', 'b.booking_id', '=', 'p.booking_id')
+                ->leftJoin('customers as c', 'c.customer_id', '=', 'p.customer_id')
+                ->leftJoin('devices as d', 'd.device_id', '=', 'b.device_id')
+                ->when($status === 'paid', fn($query) => $query->where('p.payment_status', 'PAID'))
+                ->when($status === 'unpaid', fn($query) => $query->where('p.payment_status', '!=', 'PAID'))
+                ->when($methodFilter !== null, fn($query) => $query->where('p.payment_method', $methodFilter))
+                ->when($bookingStatusFilter !== null, fn($query) => $query->where('b.status', $bookingStatusFilter))
+                ->when($search !== '', function ($query) use ($search) {
+                    $query->where(function ($subQuery) use ($search) {
+                        $subQuery->where('b.service_id_code', 'like', '%' . $search . '%')
+                            ->orWhere('c.name', 'like', '%' . $search . '%');
+                    });
+                });
+        };
+
+        $payments = $filteredQuery()
             ->select([
                 'p.payment_id',
                 'p.booking_id',
@@ -644,19 +678,32 @@ class AdminPanelController extends Controller
                 'd.brand',
                 'd.device_type',
             ])
-            ->when($status === 'paid', fn($query) => $query->where('p.payment_status', 'PAID'))
-            ->when($status === 'unpaid', fn($query) => $query->where('p.payment_status', '!=', 'PAID'))
-            ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($subQuery) use ($search) {
-                    $subQuery->where('b.service_id_code', 'like', '%' . $search . '%')
-                        ->orWhere('c.name', 'like', '%' . $search . '%');
-                });
-            })
             ->orderByDesc('p.payment_id')
             ->paginate(15)
             ->withQueryString();
 
-        return view('admin.pembayaran', compact('payments', 'status', 'search'));
+        $summary = $filteredQuery()
+            ->selectRaw('COUNT(*) as total_transaksi')
+            ->selectRaw('COALESCE(SUM(p.amount), 0) as total_nominal')
+            ->selectRaw("COALESCE(SUM(CASE WHEN p.payment_status = 'PAID' THEN p.amount ELSE 0 END), 0) as total_lunas")
+            ->first();
+
+        $countFiltered = (int) ($summary->total_transaksi ?? 0);
+        $totalFiltered = (float) ($summary->total_nominal ?? 0);
+        $totalPaidFiltered = (float) ($summary->total_lunas ?? 0);
+        $totalUnpaidFiltered = max(0, $totalFiltered - $totalPaidFiltered);
+
+        return view('admin.pembayaran', compact(
+            'payments',
+            'status',
+            'method',
+            'bookingStatus',
+            'search',
+            'countFiltered',
+            'totalFiltered',
+            'totalPaidFiltered',
+            'totalUnpaidFiltered'
+        ));
     }
 
     /**
