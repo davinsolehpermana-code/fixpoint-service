@@ -806,7 +806,7 @@ class AdminPanelController extends Controller
                 return 'Pembayaran ini sudah berstatus lunas.';
             }
 
-            if (!in_array($payment->payment_method, ['CASH', 'QRIS'], true)) {
+            if (!in_array($payment->payment_method, ['CASH', 'QRIS', 'TRANSFER'], true)) {
                 return 'Metode pembayaran tidak valid.';
             }
 
@@ -823,7 +823,7 @@ class AdminPanelController extends Controller
                 ) {
                     return 'QRIS hanya dapat dikonfirmasi setelah bukti pembayaran diunggah dan menunggu verifikasi.';
                 }
-            } else {
+            } elseif ($payment->payment_method === 'CASH') {
                 // Cash wajib mencatat uang yang benar-benar diterima agar struk
                 // pelanggan menampilkan nominal bayar dan kembalian yang tepat.
                 $cashInput = $request->input('cash_received');

@@ -71,13 +71,13 @@
                     @php
                         $hasValidPaymentMethod = in_array(
                             $payment->payment_method,
-                            ['CASH', 'QRIS'],
+                            ['CASH', 'QRIS', 'TRANSFER'],
                             true
                         );
 
-                        // Cash dapat dikonfirmasi langsung oleh Admin.
+                        // Cash dan transfer dapat dikonfirmasi langsung oleh Admin.
                         // QRIS harus memiliki bukti pembayaran terlebih dahulu.
-                        $hasPaymentProof = $payment->payment_method === 'CASH'
+                        $hasPaymentProof = in_array($payment->payment_method, ['CASH', 'TRANSFER'], true)
                             || filled($payment->payment_proof);
 
                         // QRIS hanya dapat dikonfirmasi setelah pelanggan mengunggah bukti

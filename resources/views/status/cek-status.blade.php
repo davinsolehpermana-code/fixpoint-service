@@ -82,6 +82,7 @@
         $methodLabel = match ($payment?->payment_method) {
             'CASH' => 'Cash / Tunai',
             'QRIS' => 'QRIS',
+            'TRANSFER' => 'Transfer Bank',
             default => 'Belum dipilih',
         };
 
@@ -1024,6 +1025,13 @@
                                 <strong>Pembayaran Cash / Tunai</strong><br>
                                 Silakan lakukan pembayaran saat mengambil perangkat di tempat servis. Status pembayaran akan
                                 berubah menjadi <strong>Lunas</strong> setelah Admin menerima dan mengonfirmasi pembayaran.
+                            </div>
+                        @elseif ($payment->payment_method === 'TRANSFER')
+                            <div class="payment-note waiting">
+                                <strong>Pembayaran Transfer Bank</strong><br>
+                                Silakan transfer sesuai total tagihan ke rekening FixPoint Service yang diberikan Admin.
+                                Status pembayaran akan berubah menjadi <strong>Lunas</strong> setelah Admin mengonfirmasi
+                                dana masuk.
                             </div>
                         @elseif ($payment->payment_method === 'QRIS')
                             @if ($isQrisWaiting)

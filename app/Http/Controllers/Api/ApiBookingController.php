@@ -43,7 +43,7 @@ class ApiBookingController extends Controller
             'service' => 'required|in:laptop,pc',
             'keluhan' => 'required|string|max:1000',
             'schedule_id' => 'required|integer|exists:schedules,schedule_id',
-            'payment_method' => 'required|in:CASH,QRIS',
+            'payment_method' => 'required|in:CASH,QRIS,TRANSFER',
         ], [
             // Pesan error kustom yang ramah pengguna (S2-05 Standard)
             'nama.required' => 'Nama lengkap wajib diisi.',
@@ -59,6 +59,7 @@ class ApiBookingController extends Controller
             'schedule_id.required' => 'Jadwal servis wajib dipilih.',
             'schedule_id.exists' => 'Jadwal yang Anda pilih tidak valid atau sudah tidak tersedia.',
             'payment_method.required' => 'Metode pembayaran wajib dipilih.',
+            'payment_method.in' => 'Metode pembayaran harus QRIS, tunai, atau transfer.',
         ]);
 
         // Jika validasi gagal, kembalikan respons JSON dengan kode 422

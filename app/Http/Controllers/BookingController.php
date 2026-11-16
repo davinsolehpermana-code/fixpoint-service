@@ -42,7 +42,8 @@ class BookingController extends Controller
             ],
             'keluhan' => ['required', 'string', 'max:1000'],
             'schedule_id' => ['required', 'integer', 'exists:schedules,schedule_id'],
-            'payment_method' => ['required', Rule::in(['CASH', 'QRIS'])],
+            // Pilihan metode pembayaran pelanggan: QRIS, tunai (CASH), atau transfer bank.
+            'payment_method' => ['required', Rule::in(['QRIS', 'CASH', 'TRANSFER'])],
         ], [
             'nama.regex' => 'Nama hanya boleh berisi huruf, spasi, tanda titik, koma, atau strip.',
             'telepon.regex' => 'Nomor telepon hanya boleh berisi angka dan karakter + - ( ).',
@@ -51,6 +52,8 @@ class BookingController extends Controller
             'service_id.exists' => 'Layanan yang dipilih tidak tersedia. Silakan pilih layanan lain.',
             'schedule_id.exists' => 'Jadwal yang dipilih tidak valid.',
             'keluhan.max' => 'Keluhan maksimal 1000 karakter.',
+            'payment_method.required' => 'Metode pembayaran wajib dipilih.',
+            'payment_method.in' => 'Metode pembayaran harus QRIS, tunai, atau transfer.',
         ]);
 
         return DB::transaction(function () use ($validated) {
@@ -347,7 +350,7 @@ class BookingController extends Controller
                 return back()->with('success', 'Pembayaran untuk Service ID ini sudah lunas.');
             }
 
-            if (!in_array($payment->payment_method, ['CASH', 'QRIS'], true)) {
+            if (!in_array($payment->payment_method, ['CASH', 'QRIS', 'TRANSFER'], true)) {
                 return back()->with('error', 'Metode pembayaran belum tercatat dengan benar.');
             }
 

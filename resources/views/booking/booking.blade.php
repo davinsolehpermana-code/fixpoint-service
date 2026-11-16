@@ -1017,6 +1017,7 @@
                                 <option value="">Pilih metode pembayaran</option>
                                 <option value="CASH" {{ old('payment_method') === 'CASH' ? 'selected' : '' }}>Cash / Tunai</option>
                                 <option value="QRIS" {{ old('payment_method') === 'QRIS' ? 'selected' : '' }}>QRIS</option>
+                                <option value="TRANSFER" {{ old('payment_method') === 'TRANSFER' ? 'selected' : '' }}>Transfer Bank</option>
                             </select>
                         </div>
                     </div>
@@ -1189,8 +1190,12 @@
                     summaryModel.textContent = modelInput.value.trim() || '-';
                     summaryModelRow.hidden = deviceValue === 'PC Desktop';
                     summaryKeluhan.textContent = keluhanInput.value.trim() || '-';
-                    summaryPaymentMethod.textContent = paymentMethodInput.value === 'CASH' ? 'Cash / Tunai' : (
-                        paymentMethodInput.value === 'QRIS' ? 'QRIS' : '-');
+                    const paymentMethodLabels = {
+                        CASH: 'Cash / Tunai',
+                        QRIS: 'QRIS',
+                        TRANSFER: 'Transfer Bank',
+                    };
+                    summaryPaymentMethod.textContent = paymentMethodLabels[paymentMethodInput.value] || '-';
 
                     const selectedService = document.querySelector('input[name="service_id"]:checked');
                     if (selectedService) {
