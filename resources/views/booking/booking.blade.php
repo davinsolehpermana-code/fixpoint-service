@@ -862,8 +862,19 @@
 
                                 <label class="form-label">Nomor Telepon</label>
 
-                                <input type="text" name="telepon" id="telepon" class="form-control"
-                                    placeholder="Masukkan nomor telepon" value="{{ old('telepon') }}" required>
+                                <input
+                                    type="tel"
+                                    name="telepon"
+                                    id="telepon"
+                                    class="form-control"
+                                    placeholder="Masukkan nomor telepon"
+                                    value="{{ old('telepon') }}"
+                                    inputmode="numeric"
+                                    pattern="[0-9]{10,12}"
+                                    maxlength="12"
+                                    autocomplete="tel"
+                                    required
+                                >
 
                             </div>
 
@@ -935,7 +946,6 @@
 
 
 
-                    {{-- KATEGORI LAYANAN DINAMIS DARI TABEL SERVICES --}}
                     <div class="booking-card">
                         <h2 class="booking-card-title">Kategori Layanan</h2>
                         <p class="service-option-text" style="margin: -8px 0 16px;">Pilih layanan yang paling sesuai dengan keluhan perangkat Anda.</p>
@@ -1217,7 +1227,13 @@
             }
 
             if (namaInput) namaInput.addEventListener('input', updateSummary);
-            if (teleponInput) teleponInput.addEventListener('input', updateSummary);
+            if (teleponInput) {
+                teleponInput.addEventListener('input', function () {
+                    // Hanya izinkan angka 0-9 dan pertahankan angka 0 di awal.
+                    this.value = this.value.replace(/[^0-9]/g, '').slice(0, 12);
+                    updateSummary();
+                });
+            }
             deviceInputs.forEach(function(radio) {
                 radio.addEventListener('change', syncDeviceFields);
             });
