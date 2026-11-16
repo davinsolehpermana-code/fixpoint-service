@@ -607,17 +607,26 @@ class AdminPanelController extends Controller
         return redirect()->route('admin.data-service')->with('success', 'Data layanan berhasil diperbarui.');
     }
 
+    /**
+     * Sakelar cepat ketersediaan layanan. Layanan yang diblokir
+     * (is_active = false) tidak ditampilkan pada halaman booking pelanggan
+     * dan ditolak oleh validasi BookingController.
+     */
     public function toggleService(int $id)
     {
         $service = DB::table('services')->where('service_id', $id)->first();
         abort_unless($service, 404);
 
+        $isAvailable = !$service->is_active;
+
         DB::table('services')->where('service_id', $id)->update([
-            'is_active' => !$service->is_active,
+            'is_active' => $isAvailable,
             'updated_at' => now(),
         ]);
 
-        return redirect()->route('admin.data-service')->with('success', 'Status layanan berhasil diperbarui.');
+        return redirect()->route('admin.data-service')->with('success', $isAvailable
+            ? 'Layanan "' . $service->name . '" sekarang Tersedia dan dapat dipesan pelanggan.'
+            : 'Layanan "' . $service->name . '" diblokir (Tidak Tersedia) sehingga tidak bisa dipesan pelanggan.');
     }
 
     public function payments(Request $request)

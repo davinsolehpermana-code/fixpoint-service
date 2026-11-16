@@ -53,9 +53,21 @@
                         <div class="admin-primary-text">{{ $service->name }}</div>
                         <div class="admin-muted" style="margin-top:4px;">{{ $service->description ?: 'Tidak ada deskripsi' }}</div>
                     </div>
-                    <div class="admin-inline-actions">
-                        <span class="admin-badge {{ $service->is_active ? 'badge-green' : 'badge-gray' }}">{{ $service->is_active ? 'Aktif' : 'Nonaktif' }}</span>
+                    <div class="admin-inline-actions" style="align-items:center;">
+                        <span class="admin-badge {{ $service->is_active ? 'badge-green' : 'badge-gray' }}">{{ $service->is_active ? 'Tersedia' : 'Tidak Tersedia' }}</span>
                         <span class="admin-muted">{{ $service->estimated_price !== null ? 'Rp ' . number_format((float) $service->estimated_price, 0, ',', '.') : 'Harga ditentukan setelah diagnosis' }}</span>
+
+                        {{-- Sakelar cepat: blokir/buka layanan tanpa membuka form edit. --}}
+                        <form action="{{ route('admin.data-service.toggle', $service->service_id) }}" method="POST"
+                              onclick="event.stopPropagation();" style="margin:0;">
+                            @csrf @method('PATCH')
+                            <button type="submit"
+                                    class="admin-btn {{ $service->is_active ? 'admin-btn-outline' : 'admin-btn-success' }}"
+                                    style="padding:6px 10px;font-size:11px;white-space:nowrap;"
+                                    title="{{ $service->is_active ? 'Blokir layanan agar tidak bisa dipesan pelanggan' : 'Buka layanan agar bisa dipesan pelanggan' }}">
+                                {{ $service->is_active ? 'Blokir' : 'Buka' }}
+                            </button>
+                        </form>
                     </div>
                 </summary>
                 <div style="border-top:1px solid #eef2f7;margin-top:13px;padding-top:14px;">
@@ -71,7 +83,13 @@
                     </form>
                     <form action="{{ route('admin.data-service.toggle', $service->service_id) }}" method="POST" style="margin-top:10px;">
                         @csrf @method('PATCH')
-                        <button type="submit" class="admin-btn admin-btn-outline">{{ $service->is_active ? 'Nonaktifkan Layanan' : 'Aktifkan Layanan' }}</button>
+                        <button type="submit" class="admin-btn {{ $service->is_active ? 'admin-btn-outline' : 'admin-btn-success' }}">
+                            {{ $service->is_active ? 'Blokir Layanan (Tidak Tersedia)' : 'Buka Layanan (Tersedia)' }}
+                        </button>
+                        <p class="admin-muted" style="margin:8px 0 0;font-size:12px;">
+                            Layanan yang diblokir tidak tampil pada pilihan kategori di halaman booking pelanggan
+                            dan tidak dapat dipesan.
+                        </p>
                     </form>
                 </div>
             </details>
