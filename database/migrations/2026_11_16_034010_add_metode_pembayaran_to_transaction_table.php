@@ -76,8 +76,7 @@ return new class extends Migration
             return;
         }
 
-        // SQLite (dipakai saat pengujian) menyimpan enum sebagai CHECK constraint,
-        // jadi definisinya diubah lewat change() agar tidak menolak nilai baru.
+        
         Schema::table('payments', function (Blueprint $table) use ($methods) {
             $table->enum('payment_method', $methods)->default('CASH')->change();
         });
