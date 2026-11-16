@@ -1,0 +1,60 @@
+%% Sequence Diagram — Admin memverifikasi pembayaran CASH / QRIS
+%% Sumber implementasi: AdminPanelController@markPaid (route PUT /admin/booking/{id}/mark-paid),
+%% AdminPanelController@payments, BookingController@markPaid, view admin/pembayaran.blade.php
+
+sequenceDiagram
+    autonumber
+    actor A as Admin
+    participant MW as Middleware role:ADMIN
+    participant AC as AdminPanelController
+    participant DB as Database MySQL
+    participant B as bookings
+    participant P as payments
+    participant SR as service_records
+
+    A->>AC: GET /admin/pembayaran
+    AC->>DB: SELECT payments JOIN bookings + customer + device (filter status, pencarian)
+    AC-->>A: Daftar tagihan beserta metode dan status
+
+    alt Metode QRIS
+        A->>AC: PUT /admin/booking/{id}/mark-paid
+        AC->>DB: BEGIN TRANSACTION
+        AC->>B: SELECT booking FOR UPDATE
+        alt Booking belum COMPLETED
+            AC-->>A: Error "pembayaran hanya setelah servis selesai"
+        else payment kosong / sudah PAID / amount <= 0
+            AC-->>A: Error sesuai kondisi
+        else QRIS belum WAITING_VERIFICATION atau bukti kosong
+            AC-->>A: Error "tunggu bukti diunggah pelanggan"
+        else Valid
+            AC->>P: UPDATE status PAID, processed_by, payment_date
+            AC->>DB: COMMIT
+            AC-->>A: Sukses "pembayaran lunas"
+            opt Admin mencetak bukti
+                A->>AC: GET /admin/pembayaran/{id}/struk
+                AC->>DB: SELECT payment + booking + service_record
+                AC-->>A: Struk siap cetak (hanya status PAID)
+            end
+        end
+    else Metode CASH
+        A->>AC: PUT /admin/booking/{id}/mark-paid + cash_received
+        AC->>DB: BEGIN TRANSACTION
+        AC->>B: SELECT booking FOR UPDATE
+        alt Booking belum COMPLETED
+            AC-->>A: Error "pembayaran hanya setelah servis selesai"
+        else cash_received kosong / bukan angka / kurang dari tagihan
+            AC-->>A: Error validasi uang tunai
+        else Valid
+            AC->>P: UPDATE status PAID, cash_received, processed_by, payment_date
+            AC->>DB: COMMIT
+            AC-->>A: Sukses "pembayaran lunas"
+        end
+    end
+
+    opt Admin menolak bukti QRIS
+        A->>AC: POST /admin/pembayaran/{id}/minta-upload-ulang + catatan
+        AC->>P: UPDATE status UNPAID, processed_by null, notes = catatan
+        AC-->>A: Pelanggan diminta mengunggah ulang
+    end
+
+    Note over SR,P: amount di payments berasal dari service_records.final_cost saat servis COMPLETED.

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class AdminPanelController extends Controller
 {
@@ -88,6 +89,12 @@ class AdminPanelController extends Controller
     public function schedules()
     {
         $schedules = DB::table('schedules')
+            ->select('schedules.*')
+            ->selectSub(function ($query) {
+                $query->from('bookings')
+                    ->selectRaw('COUNT(*)')
+                    ->whereColumn('bookings.schedule_id', 'schedules.schedule_id');
+            }, 'bookings_total')
             ->orderByRaw('CASE WHEN schedule_date >= ? THEN 0 ELSE 1 END', [now()->toDateString()])
             ->orderBy('schedule_date')
             ->orderBy('start_time')
@@ -95,6 +102,227 @@ class AdminPanelController extends Controller
             ->withQueryString();
 
         return view('admin.jadwal-servis', compact('schedules'));
+    }
+
+    /**
+     * Form edit jadwal. Jadwal yang sudah lewat tidak dapat diubah karena
+     * tanggalnya sudah tidak memenuhi aturan jadwal aktif aplikasi.
+     */
+    public function editSchedule(int $scheduleId)
+    {
+        $schedule = DB::table('schedules')->where('schedule_id', $scheduleId)->first();
+
+        abort_unless($schedule, 404);
+
+        if (\Carbon\Carbon::parse($schedule->schedule_date)->lt(now()->startOfDay())) {
+            return redirect()
+                ->route('admin.schedules.index')
+                ->with('error', 'Jadwal yang sudah lewat tidak dapat diubah.');
+        }
+
+        return view('admin.edit-jadwal-servis', [
+            'schedule' => $schedule,
+            'quota' => $this->scheduleQuota($schedule),
+        ]);
+    }
+
+    /**
+     * Memperbarui tanggal, jam, kuota, dan status jadwal.
+     *
+     * Aturan integritas:
+     * - kuota tidak boleh lebih kecil dari slot yang sudah terpakai;
+     * - tanggal/jam tidak diubah bila jadwal sudah memiliki booking;
+     * - jadwal tidak boleh bertabrakan dengan sesi lain pada tanggal yang sama.
+     */
+    public function updateSchedule(Request $request, int $scheduleId)
+    {
+        $validated = $request->validate([
+            'schedule_date' => ['required', 'date', 'after_or_equal:today'],
+            'start_time' => ['required', 'date_format:H:i'],
+            'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
+            'max_booking' => ['required', 'integer', 'min:1', 'max:100'],
+            'status' => ['nullable', Rule::in(['AVAILABLE', 'CLOSED'])],
+        ], [
+            'schedule_date.required' => 'Tanggal jadwal wajib diisi.',
+            'schedule_date.date' => 'Tanggal jadwal tidak valid.',
+            'schedule_date.after_or_equal' => 'Tanggal jadwal tidak boleh sebelum hari ini.',
+            'start_time.required' => 'Jam mulai wajib diisi.',
+            'start_time.date_format' => 'Format jam mulai tidak valid.',
+            'end_time.required' => 'Jam selesai wajib diisi.',
+            'end_time.date_format' => 'Format jam selesai tidak valid.',
+            'end_time.after' => 'Jam selesai harus lebih besar daripada jam mulai.',
+            'max_booking.required' => 'Jumlah slot wajib diisi.',
+            'max_booking.integer' => 'Jumlah slot harus berupa bilangan bulat.',
+            'max_booking.min' => 'Jumlah slot minimal 1 dan tidak boleh negatif.',
+            'max_booking.max' => 'Jumlah slot maksimal 100.',
+            'status.in' => 'Status jadwal tidak valid.',
+        ]);
+
+        $newStart = $validated['start_time'] . ':00';
+        $newEnd = $validated['end_time'] . ':00';
+
+        $result = DB::transaction(function () use ($scheduleId, $validated, $newStart, $newEnd) {
+            $schedule = DB::table('schedules')
+                ->where('schedule_id', $scheduleId)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$schedule) {
+                return ['status' => 404];
+            }
+
+            $quota = $this->scheduleQuota($schedule);
+            $newCapacity = (int) $validated['max_booking'];
+
+            // Slot yang sudah terpakai tidak boleh hilang karena kuota diperkecil.
+            if ($newCapacity < $quota->used_slots) {
+                return [
+                    'status' => 422,
+                    'message' => 'Kuota tidak dapat diubah menjadi ' . $newCapacity
+                        . ' slot karena sudah ada ' . $quota->used_slots
+                        . ' slot terpakai (' . $quota->active_bookings . ' booking aktif).',
+                ];
+            }
+
+            $timeChanged = $validated['schedule_date'] !== substr((string) $schedule->schedule_date, 0, 10)
+                || substr((string) $schedule->start_time, 0, 8) !== $newStart
+                || substr((string) $schedule->end_time, 0, 8) !== $newEnd;
+
+            // Waktu yang sudah terikat transaksi tidak diubah diam-diam.
+            if ($timeChanged && $quota->total_bookings > 0) {
+                return [
+                    'status' => 422,
+                    'message' => 'Tanggal dan jam jadwal tidak dapat diubah karena jadwal ini sudah memiliki '
+                        . $quota->total_bookings . ' booking. Tutup jadwal ini (status Ditutup) lalu buat jadwal baru bila waktu servis harus berubah.',
+                ];
+            }
+
+            $overlapExists = DB::table('schedules')
+                ->where('schedule_id', '!=', $schedule->schedule_id)
+                ->whereDate('schedule_date', $validated['schedule_date'])
+                ->where('start_time', '<', $newEnd)
+                ->where('end_time', '>', $newStart)
+                ->exists();
+
+            if ($overlapExists) {
+                return [
+                    'status' => 422,
+                    'message' => 'Jadwal pada waktu tersebut bertabrakan dengan jadwal lain yang sudah ada.',
+                ];
+            }
+
+            $currentBooking = (int) $schedule->current_booking;
+            $status = $validated['status'] ?? ($schedule->status === 'CLOSED' ? 'CLOSED' : 'AVAILABLE');
+
+            // FULL bukan pilihan manual: statusnya diturunkan dari sisa kuota.
+            if ($status !== 'CLOSED') {
+                $status = $currentBooking >= $newCapacity ? 'FULL' : 'AVAILABLE';
+            }
+
+            DB::table('schedules')->where('schedule_id', $schedule->schedule_id)->update([
+                'schedule_date' => $validated['schedule_date'],
+                'start_time' => $newStart,
+                'end_time' => $newEnd,
+                'max_booking' => $newCapacity,
+                'status' => $status,
+                'updated_at' => now(),
+            ]);
+
+            return [
+                'status' => 200,
+                'capacity' => $newCapacity,
+                'capacity_changed' => $newCapacity !== (int) $schedule->max_booking,
+                'remaining' => max(0, $newCapacity - $currentBooking),
+                'time_changed' => $timeChanged,
+            ];
+        });
+
+        if ($result['status'] === 404) {
+            abort(404);
+        }
+
+        if ($result['status'] === 422) {
+            return back()->withInput()->with('error', $result['message']);
+        }
+
+        $message = 'Jadwal servis berhasil diperbarui. Kapasitas ' . $result['capacity']
+            . ' slot dengan sisa ' . $result['remaining'] . ' slot.';
+
+        if ($result['time_changed']) {
+            $message .= ' Tanggal dan jam jadwal sudah diperbarui.';
+        }
+
+        return redirect()->route('admin.schedules.index')->with('success', $message);
+    }
+
+    /**
+     * Menghapus jadwal yang belum pernah dipakai. Jadwal dengan booking apa pun
+     * dipertahankan agar riwayat pelanggan dan transaksi tidak hilang.
+     */
+    public function destroySchedule(int $scheduleId)
+    {
+        $result = DB::transaction(function () use ($scheduleId) {
+            $schedule = DB::table('schedules')
+                ->where('schedule_id', $scheduleId)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$schedule) {
+                return ['status' => 404];
+            }
+
+            $totalBookings = DB::table('bookings')
+                ->where('schedule_id', $scheduleId)
+                ->count();
+
+            if ($totalBookings > 0) {
+                return [
+                    'status' => 422,
+                    'message' => 'Jadwal tidak dapat dihapus karena masih memiliki ' . $totalBookings
+                        . ' booking terkait. Gunakan tombol Tutup Jadwal agar jadwal tidak dapat dipesan lagi tanpa menghapus riwayat pelanggan.',
+                ];
+            }
+
+            DB::table('schedules')->where('schedule_id', $scheduleId)->delete();
+
+            return ['status' => 200];
+        });
+
+        if ($result['status'] === 404) {
+            abort(404);
+        }
+
+        if ($result['status'] === 422) {
+            return back()->with('error', $result['message']);
+        }
+
+        return redirect()->route('admin.schedules.index')->with('success', 'Jadwal servis berhasil dihapus.');
+    }
+
+    /**
+     * Ringkasan pemakaian slot sebuah jadwal. current_booking adalah mekanisme
+     * kuota resmi aplikasi, tetapi booking aktif dihitung ulang agar kuota tidak
+     * pernah turun di bawah booking yang benar-benar terhubung ke jadwal.
+     */
+    private function scheduleQuota(object $schedule): object
+    {
+        $bookings = DB::table('bookings')
+            ->where('schedule_id', $schedule->schedule_id)
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw("SUM(CASE WHEN status IN ('PENDING','WAITING_VERIFICATION','CONFIRMED','COMPLETED') THEN 1 ELSE 0 END) as active")
+            ->first();
+
+        $totalBookings = (int) ($bookings->total ?? 0);
+        $activeBookings = (int) ($bookings->active ?? 0);
+        $usedSlots = max((int) $schedule->current_booking, $activeBookings);
+
+        return (object) [
+            'total_bookings' => $totalBookings,
+            'active_bookings' => $activeBookings,
+            'used_slots' => $usedSlots,
+            'remaining_slots' => max(0, (int) $schedule->max_booking - $usedSlots),
+            'has_bookings' => $totalBookings > 0,
+        ];
     }
 
     public function storeSchedule(Request $request)

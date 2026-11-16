@@ -1,0 +1,367 @@
+{
+    "collected_at": "2026-11-09T16:56:48+00:00",
+    "connection": "mysql",
+    "database": "Fixpoint-service",
+    "server_version": "10.4.32-MariaDB",
+    "tables": {
+        "users": 2,
+        "customers": 1,
+        "devices": 2,
+        "services": 2,
+        "schedules": 2,
+        "bookings": 2,
+        "service_records": 1,
+        "payments": 2
+    },
+    "indexes": {
+        "users": [
+            {
+                "name": "primary",
+                "columns": [
+                    "user_id"
+                ],
+                "unique": true,
+                "primary": true
+            },
+            {
+                "name": "users_email_unique",
+                "columns": [
+                    "email"
+                ],
+                "unique": true,
+                "primary": false
+            }
+        ],
+        "customers": [
+            {
+                "name": "customers_phone_index",
+                "columns": [
+                    "phone_number"
+                ],
+                "unique": false,
+                "primary": false
+            },
+            {
+                "name": "primary",
+                "columns": [
+                    "customer_id"
+                ],
+                "unique": true,
+                "primary": true
+            }
+        ],
+        "devices": [
+            {
+                "name": "devices_customer_id_foreign",
+                "columns": [
+                    "customer_id"
+                ],
+                "unique": false,
+                "primary": false
+            },
+            {
+                "name": "primary",
+                "columns": [
+                    "device_id"
+                ],
+                "unique": true,
+                "primary": true
+            }
+        ],
+        "services": [
+            {
+                "name": "primary",
+                "columns": [
+                    "service_id"
+                ],
+                "unique": true,
+                "primary": true
+            }
+        ],
+        "schedules": [
+            {
+                "name": "primary",
+                "columns": [
+                    "schedule_id"
+                ],
+                "unique": true,
+                "primary": true
+            },
+            {
+                "name": "schedules_date_status_index",
+                "columns": [
+                    "schedule_date",
+                    "status"
+                ],
+                "unique": false,
+                "primary": false
+            },
+            {
+                "name": "schedules_overlap_index",
+                "columns": [
+                    "schedule_date",
+                    "start_time",
+                    "end_time"
+                ],
+                "unique": false,
+                "primary": false
+            }
+        ],
+        "bookings": [
+            {
+                "name": "bookings_customer_id_foreign",
+                "columns": [
+                    "customer_id"
+                ],
+                "unique": false,
+                "primary": false
+            },
+            {
+                "name": "bookings_date_index",
+                "columns": [
+                    "booking_date"
+                ],
+                "unique": false,
+                "primary": false
+            },
+            {
+                "name": "bookings_device_id_foreign",
+                "columns": [
+                    "device_id"
+                ],
+                "unique": false,
+                "primary": false
+            },
+            {
+                "name": "bookings_handled_by_foreign",
+                "columns": [
+                    "handled_by"
+                ],
+                "unique": false,
+                "primary": false
+            },
+            {
+                "name": "bookings_schedule_status_index",
+                "columns": [
+                    "schedule_id",
+                    "status"
+                ],
+                "unique": false,
+                "primary": false
+            },
+            {
+                "name": "bookings_service_id_code_unique",
+                "columns": [
+                    "service_id_code"
+                ],
+                "unique": true,
+                "primary": false
+            },
+            {
+                "name": "bookings_service_id_foreign",
+                "columns": [
+                    "service_id"
+                ],
+                "unique": false,
+                "primary": false
+            },
+            {
+                "name": "bookings_status_index",
+                "columns": [
+                    "status"
+                ],
+                "unique": false,
+                "primary": false
+            },
+            {
+                "name": "primary",
+                "columns": [
+                    "booking_id"
+                ],
+                "unique": true,
+                "primary": true
+            }
+        ],
+        "service_records": [
+            {
+                "name": "primary",
+                "columns": [
+                    "service_record_id"
+                ],
+                "unique": true,
+                "primary": true
+            },
+            {
+                "name": "service_records_booking_id_foreign",
+                "columns": [
+                    "booking_id"
+                ],
+                "unique": false,
+                "primary": false
+            },
+            {
+                "name": "service_records_handled_by_foreign",
+                "columns": [
+                    "handled_by"
+                ],
+                "unique": false,
+                "primary": false
+            },
+            {
+                "name": "service_records_status_completed_index",
+                "columns": [
+                    "service_status",
+                    "completed_at"
+                ],
+                "unique": false,
+                "primary": false
+            }
+        ],
+        "payments": [
+            {
+                "name": "payments_booking_id_unique",
+                "columns": [
+                    "booking_id"
+                ],
+                "unique": true,
+                "primary": false
+            },
+            {
+                "name": "payments_customer_id_foreign",
+                "columns": [
+                    "customer_id"
+                ],
+                "unique": false,
+                "primary": false
+            },
+            {
+                "name": "payments_method_index",
+                "columns": [
+                    "payment_method"
+                ],
+                "unique": false,
+                "primary": false
+            },
+            {
+                "name": "payments_processed_by_foreign",
+                "columns": [
+                    "processed_by"
+                ],
+                "unique": false,
+                "primary": false
+            },
+            {
+                "name": "payments_service_record_id_foreign",
+                "columns": [
+                    "service_record_id"
+                ],
+                "unique": false,
+                "primary": false
+            },
+            {
+                "name": "payments_status_date_index",
+                "columns": [
+                    "payment_status",
+                    "payment_date"
+                ],
+                "unique": false,
+                "primary": false
+            },
+            {
+                "name": "primary",
+                "columns": [
+                    "payment_id"
+                ],
+                "unique": true,
+                "primary": true
+            }
+        ]
+    },
+    "explain": {
+        "filter_jadwal_tersedia": {
+            "sql": "SELECT schedule_id FROM schedules WHERE schedule_date >= CURDATE() AND status = 'AVAILABLE' ORDER BY schedule_date, start_time",
+            "plan": [
+                {
+                    "id": 1,
+                    "select_type": "SIMPLE",
+                    "table": "schedules",
+                    "type": "range",
+                    "possible_keys": "schedules_date_status_index,schedules_overlap_index",
+                    "key": "schedules_overlap_index",
+                    "key_len": "3",
+                    "ref": null,
+                    "rows": "1",
+                    "Extra": "Using where"
+                }
+            ]
+        },
+        "hitung_booking_aktif_jadwal": {
+            "sql": "SELECT COUNT(*) FROM bookings WHERE schedule_id = 1 AND status IN ('PENDING','WAITING_VERIFICATION','CONFIRMED','COMPLETED')",
+            "plan": [
+                {
+                    "id": 1,
+                    "select_type": "SIMPLE",
+                    "table": "bookings",
+                    "type": "ref",
+                    "possible_keys": "bookings_status_index,bookings_schedule_status_index",
+                    "key": "bookings_schedule_status_index",
+                    "key_len": "8",
+                    "ref": "const",
+                    "rows": "2",
+                    "Extra": "Using where; Using index"
+                }
+            ]
+        },
+        "laporan_pemasukan": {
+            "sql": "SELECT SUM(amount) FROM payments WHERE payment_status = 'PAID' AND payment_date BETWEEN '2026-11-01 00:00:00' AND '2026-11-30 23:59:59'",
+            "plan": [
+                {
+                    "id": 1,
+                    "select_type": "SIMPLE",
+                    "table": "payments",
+                    "type": "range",
+                    "possible_keys": "payments_status_date_index",
+                    "key": "payments_status_date_index",
+                    "key_len": "7",
+                    "ref": null,
+                    "rows": "1",
+                    "Extra": "Using index condition"
+                }
+            ]
+        },
+        "riwayat_servis": {
+            "sql": "SELECT booking_id FROM service_records WHERE service_status = 'COMPLETED' AND completed_at >= '2026-11-01'",
+            "plan": [
+                {
+                    "id": 1,
+                    "select_type": "SIMPLE",
+                    "table": "service_records",
+                    "type": "range",
+                    "possible_keys": "service_records_status_completed_index",
+                    "key": "service_records_status_completed_index",
+                    "key_len": "7",
+                    "ref": null,
+                    "rows": "1",
+                    "Extra": "Using index condition"
+                }
+            ]
+        },
+        "pencarian_customer": {
+            "sql": "SELECT customer_id FROM customers WHERE phone_number = '081200000001'",
+            "plan": [
+                {
+                    "id": 1,
+                    "select_type": "SIMPLE",
+                    "table": "customers",
+                    "type": "ref",
+                    "possible_keys": "customers_phone_index",
+                    "key": "customers_phone_index",
+                    "key_len": "1022",
+                    "ref": "const",
+                    "rows": "1",
+                    "Extra": "Using where; Using index"
+                }
+            ]
+        }
+    }
+}

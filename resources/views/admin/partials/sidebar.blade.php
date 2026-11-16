@@ -37,7 +37,7 @@
             <div class="admin-nav-group">
                 <div class="admin-nav-label">Operasional</div>
                 <a href="{{ route('admin.schedules.index') }}" class="admin-nav-link {{ request()->routeIs('admin.schedules.*') ? 'active' : '' }}">
-                    <span class="admin-nav-icon">＋</span> Tambah Jadwal Servis
+                    <span class="admin-nav-icon">▥</span> Jadwal Servis
                 </a>
                 <a href="{{ route('admin.service-process') }}" class="admin-nav-link {{ request()->routeIs('admin.service-process') ? 'active' : '' }}">
                     <span class="admin-nav-icon">▤</span> Kelola Proses Servis
