@@ -1,3 +1,4 @@
+
 <?php
 
 namespace App\Http\Controllers;
@@ -33,7 +34,6 @@ class BookingController extends Controller
                 'regex:/^[0-9]+$/',
             ],
             'jenis_perangkat' => ['required', Rule::in(['Laptop', 'PC Desktop'])],
-            // Merek/model hanya relevan untuk laptop; PC desktop cukup jenis perangkatnya.
             'merek_model' => ['nullable', 'string', 'max:255', 'required_unless:jenis_perangkat,PC Desktop'],
             'service_id' => [
                 'required',
@@ -42,6 +42,8 @@ class BookingController extends Controller
             ],
             'keluhan' => ['required', 'string', 'max:1000'],
             'schedule_id' => ['required', 'integer', 'exists:schedules,schedule_id'],
+
+            // Metode pembayaran: tunai, QRIS, atau transfer bank.
             'payment_method' => ['required', Rule::in(['CASH', 'QRIS', 'TRANSFER'])],
         ], [
             'nama.regex' => 'Nama hanya boleh berisi huruf, spasi, tanda titik, koma, atau strip.',
@@ -51,6 +53,8 @@ class BookingController extends Controller
             'service_id.exists' => 'Layanan yang dipilih tidak tersedia. Silakan pilih layanan lain.',
             'schedule_id.exists' => 'Jadwal yang dipilih tidak valid.',
             'keluhan.max' => 'Keluhan maksimal 1000 karakter.',
+            'payment_method.required' => 'Metode pembayaran wajib dipilih.',
+            'payment_method.in' => 'Metode pembayaran harus QRIS, tunai, atau transfer.',
         ]);
 
         return DB::transaction(function () use ($validated) {
@@ -71,7 +75,6 @@ class BookingController extends Controller
                 );
             }
 
-            // Ambil kategori layanan dari tabel services, bukan nama yang dikunci di kode.
             $service = Service::query()
                 ->where('service_id', $validated['service_id'])
                 ->where('is_active', true)
@@ -95,8 +98,6 @@ class BookingController extends Controller
                 ]);
             }
 
-            // PC desktop tidak memakai merek/model, kolomnya diisi string kosong
-            // karena struktur tabel devices mewajibkan nilai (NOT NULL).
             $deviceName = $validated['jenis_perangkat'] === 'PC Desktop'
                 ? ''
                 : trim((string) ($validated['merek_model'] ?? ''));
@@ -125,7 +126,6 @@ class BookingController extends Controller
                 'notes' => null,
             ]);
 
-            // Metode pembayaran ditentukan pelanggan dan tidak diminta ulang dari Admin.
             Payment::create([
                 'booking_id' => $booking->booking_id,
                 'customer_id' => $customer->customer_id,
@@ -140,8 +140,10 @@ class BookingController extends Controller
             $schedule->increment('current_booking');
             $schedule->refresh();
 
-            // Kuota habis bukan berarti jadwal hilang, hanya berubah status menjadi FULL.
-            if ($schedule->status === 'AVAILABLE' && (int) $schedule->current_booking >= (int) $schedule->max_booking) {
+            if (
+                $schedule->status === 'AVAILABLE' &&
+                (int) $schedule->current_booking >= (int) $schedule->max_booking
+            ) {
                 $schedule->update(['status' => 'FULL']);
             }
 
@@ -152,13 +154,15 @@ class BookingController extends Controller
     }
 
     /**
-     * Admin menerima booking. Catatan servis dibuat saat booking diterima
-     * agar kolom service_records.handled_by yang wajib dapat diisi.
+     * Admin menerima booking.
      */
     public function verifyBooking(int $id)
     {
         return DB::transaction(function () use ($id) {
-            $booking = Booking::query()->where('booking_id', $id)->lockForUpdate()->firstOrFail();
+            $booking = Booking::query()
+                ->where('booking_id', $id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
             if (!in_array($booking->status, ['PENDING', 'WAITING_VERIFICATION'], true)) {
                 return back()->with('error', 'Booking tidak bisa diverifikasi pada status saat ini.');
@@ -185,7 +189,6 @@ class BookingController extends Controller
 
     /**
      * Memperbarui diagnosis, estimasi, status servis, dan biaya akhir.
-     * Metode pembayaran tetap membaca pilihan pelanggan dari tabel payments.
      */
     public function updateBookingStatus(Request $request)
     {
@@ -216,6 +219,7 @@ class BookingController extends Controller
             }
 
             $adminId = Auth::id();
+
             $serviceRecord = ServiceRecord::query()
                 ->where('booking_id', $booking->booking_id)
                 ->lockForUpdate()
@@ -252,26 +256,37 @@ class BookingController extends Controller
                 'PROCESS' => 2,
                 'COMPLETED' => 3,
             ];
+
             $currentServiceStatus = $serviceRecord->service_status ?: 'PENDING';
+
             if (($statusOrder[$validated['service_status']] ?? 0) < ($statusOrder[$currentServiceStatus] ?? 0)) {
                 throw ValidationException::withMessages([
                     'service_status' => 'Status pengerjaan tidak dapat dikembalikan ke tahap sebelumnya.',
                 ]);
             }
 
-            if ($validated['service_status'] === 'COMPLETED' && !array_key_exists('final_cost', $validated)) {
+            if (
+                $validated['service_status'] === 'COMPLETED' &&
+                !array_key_exists('final_cost', $validated)
+            ) {
                 throw ValidationException::withMessages([
                     'final_cost' => 'Masukkan biaya akhir sebelum menandai servis selesai.',
                 ]);
             }
 
-            if ($validated['service_status'] === 'COMPLETED' && $validated['final_cost'] === null) {
+            if (
+                $validated['service_status'] === 'COMPLETED' &&
+                $validated['final_cost'] === null
+            ) {
                 throw ValidationException::withMessages([
                     'final_cost' => 'Masukkan biaya akhir sebelum menandai servis selesai.',
                 ]);
             }
 
-            if ($validated['service_status'] === 'COMPLETED' && (float) $validated['final_cost'] <= 0) {
+            if (
+                $validated['service_status'] === 'COMPLETED' &&
+                (float) $validated['final_cost'] <= 0
+            ) {
                 throw ValidationException::withMessages([
                     'final_cost' => 'Biaya akhir harus lebih dari Rp0 sebelum servis diselesaikan.',
                 ]);
@@ -285,7 +300,10 @@ class BookingController extends Controller
                 $serviceRecord->estimated_cost = $validated['estimated_cost'];
             }
 
-            if ($validated['service_status'] === 'PROCESS' && !$serviceRecord->started_at) {
+            if (
+                $validated['service_status'] === 'PROCESS' &&
+                !$serviceRecord->started_at
+            ) {
                 $serviceRecord->started_at = now();
             }
 
@@ -294,7 +312,6 @@ class BookingController extends Controller
                 $serviceRecord->completed_at = $serviceRecord->completed_at ?: now();
             }
 
-            // Estimasi waktu dan catatan disimpan di service_notes agar tidak perlu kolom/tabel baru.
             $noteParts = [];
             $duration = trim((string) ($validated['estimated_duration'] ?? ''));
             $notes = trim((string) ($validated['service_notes'] ?? ''));
@@ -302,18 +319,25 @@ class BookingController extends Controller
             if ($duration !== '') {
                 $noteParts[] = 'Estimasi pengerjaan: ' . $duration;
             }
+
             if ($notes !== '') {
                 $noteParts[] = 'Catatan: ' . $notes;
             }
-            $serviceRecord->service_notes = $noteParts ? implode("\n\n", $noteParts) : null;
+
+            $serviceRecord->service_notes = $noteParts
+                ? implode("\n\n", $noteParts)
+                : null;
+
             $serviceRecord->save();
 
             $booking->handled_by = $serviceRecord->handled_by;
-            $booking->status = $validated['service_status'] === 'COMPLETED' ? 'COMPLETED' : 'CONFIRMED';
+            $booking->status = $validated['service_status'] === 'COMPLETED'
+                ? 'COMPLETED'
+                : 'CONFIRMED';
+
             $booking->save();
 
             if ($validated['service_status'] === 'COMPLETED') {
-                // Tagihan akhir dihubungkan dengan catatan servis. Tetap UNPAID sampai Admin menerima pembayaran.
                 $payment->service_record_id = $serviceRecord->service_record_id;
                 $payment->amount = $serviceRecord->final_cost;
                 $payment->payment_status = $payment->payment_status ?: 'UNPAID';
@@ -324,11 +348,16 @@ class BookingController extends Controller
         });
     }
 
-    /** Mengonfirmasi pembayaran setelah uang Cash/QRIS benar-benar diterima. */
+    /**
+     * Mengonfirmasi pembayaran CASH, QRIS, atau TRANSFER setelah diterima.
+     */
     public function markPaid(int $id)
     {
         return DB::transaction(function () use ($id) {
-            $booking = Booking::query()->where('booking_id', $id)->lockForUpdate()->firstOrFail();
+            $booking = Booking::query()
+                ->where('booking_id', $id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
             if ($booking->status !== 'COMPLETED') {
                 return back()->with('error', 'Pembayaran hanya dapat dikonfirmasi setelah servis selesai.');
@@ -347,7 +376,7 @@ class BookingController extends Controller
                 return back()->with('success', 'Pembayaran untuk Service ID ini sudah lunas.');
             }
 
-            if (!in_array($payment->payment_method, ['CASH', 'QRIS'], true)) {
+            if (!in_array($payment->payment_method, ['CASH', 'QRIS', 'TRANSFER'], true)) {
                 return back()->with('error', 'Metode pembayaran belum tercatat dengan benar.');
             }
 

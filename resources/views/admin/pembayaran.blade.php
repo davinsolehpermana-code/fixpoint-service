@@ -35,19 +35,81 @@
 </div>
 
 <section class="admin-card">
-    <div class="admin-toolbar">
-        <form action="{{ route('admin.payments') }}" method="GET" class="admin-search">
-            <input type="text" name="q" class="admin-input" value="{{ $search }}" placeholder="Cari Service ID atau nama pelanggan...">
+    <div class="admin-toolbar" style="align-items:flex-end;flex-wrap:wrap;gap:12px;">
+        <form action="{{ route('admin.payments') }}" method="GET"
+              style="display:flex;align-items:flex-end;flex-wrap:wrap;gap:8px;width:100%;">
+            <div class="admin-form-group" style="min-width:220px;flex:1 1 220px;">
+                <label class="admin-label" for="paymentSearch">Cari transaksi</label>
+                <input type="text" id="paymentSearch" name="q" class="admin-input" value="{{ $search }}"
+                       placeholder="Service ID atau nama pelanggan...">
+            </div>
+
+            <div class="admin-form-group" style="min-width:170px;">
+                <label class="admin-label" for="paymentMethodFilter">Metode pembayaran</label>
+                <select name="method" id="paymentMethodFilter" class="admin-input">
+                    <option value="ALL" {{ $method === 'ALL' ? 'selected' : '' }}>Semua metode</option>
+                    <option value="CASH" {{ $method === 'CASH' ? 'selected' : '' }}>Cash / Tunai</option>
+                    <option value="QRIS" {{ $method === 'QRIS' ? 'selected' : '' }}>QRIS</option>
+                    <option value="TRANSFER" {{ $method === 'TRANSFER' ? 'selected' : '' }}>Transfer Bank</option>
+                </select>
+            </div>
+
+            <div class="admin-form-group" style="min-width:180px;">
+                <label class="admin-label" for="bookingStatusFilter">Status pemesanan</label>
+                <select name="booking_status" id="bookingStatusFilter" class="admin-input">
+                    <option value="ALL" {{ $bookingStatus === 'ALL' ? 'selected' : '' }}>Semua status</option>
+                    @foreach ([
+                        'PENDING' => 'Menunggu Verifikasi',
+                        'WAITING_VERIFICATION' => 'Menunggu Konfirmasi',
+                        'CONFIRMED' => 'Dikonfirmasi',
+                        'COMPLETED' => 'Selesai',
+                        'CANCELLED' => 'Dibatalkan',
+                        'REJECTED' => 'Ditolak',
+                    ] as $value => $label)
+                        <option value="{{ $value }}" {{ $bookingStatus === $value ? 'selected' : '' }}>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+
             @if($status !== 'all')
                 <input type="hidden" name="status" value="{{ $status }}">
             @endif
-            <button type="submit" class="admin-btn admin-btn-primary">Cari</button>
+
+            <button type="submit" class="admin-btn admin-btn-primary">Terapkan</button>
+            <a href="{{ route('admin.payments') }}" class="admin-btn admin-btn-outline">Reset</a>
         </form>
 
         <div class="admin-filter">
-            <a href="{{ route('admin.payments', ['status' => 'all']) }}" class="admin-filter-link {{ $status === 'all' ? 'active' : '' }}">Semua</a>
-            <a href="{{ route('admin.payments', ['status' => 'unpaid']) }}" class="admin-filter-link {{ $status === 'unpaid' ? 'active' : '' }}">Belum Bayar</a>
-            <a href="{{ route('admin.payments', ['status' => 'paid']) }}" class="admin-filter-link {{ $status === 'paid' ? 'active' : '' }}">Lunas</a>
+            <a href="{{ route('admin.payments', ['status' => 'all', 'method' => $method, 'booking_status' => $bookingStatus]) }}" class="admin-filter-link {{ $status === 'all' ? 'active' : '' }}">Semua</a>
+            <a href="{{ route('admin.payments', ['status' => 'unpaid', 'method' => $method, 'booking_status' => $bookingStatus]) }}" class="admin-filter-link {{ $status === 'unpaid' ? 'active' : '' }}">Belum Bayar</a>
+            <a href="{{ route('admin.payments', ['status' => 'paid', 'method' => $method, 'booking_status' => $bookingStatus]) }}" class="admin-filter-link {{ $status === 'paid' ? 'active' : '' }}">Lunas</a>
+        </div>
+    </div>
+
+    {{-- Total nominal mengikuti baris data yang sedang difilter. --}}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:16px;">
+        <div style="border:1px solid #e5e7eb;border-radius:11px;padding:13px 15px;background:#f8fafc;">
+            <div class="admin-label">Total nominal (data terfilter)</div>
+            <div style="font-size:19px;font-weight:800;color:#0f172a;margin-top:4px;">
+                Rp {{ number_format($totalFiltered, 0, ',', '.') }}
+            </div>
+            <div class="admin-muted">{{ $countFiltered }} transaksi sesuai filter</div>
+        </div>
+
+        <div style="border:1px solid #dcfce7;border-radius:11px;padding:13px 15px;background:#f0fdf4;">
+            <div class="admin-label">Sudah lunas</div>
+            <div style="font-size:19px;font-weight:800;color:#15803d;margin-top:4px;">
+                Rp {{ number_format($totalPaidFiltered, 0, ',', '.') }}
+            </div>
+            <div class="admin-muted">Dari data yang sedang difilter</div>
+        </div>
+
+        <div style="border:1px solid #fef3c7;border-radius:11px;padding:13px 15px;background:#fffbeb;">
+            <div class="admin-label">Belum lunas</div>
+            <div style="font-size:19px;font-weight:800;color:#b45309;margin-top:4px;">
+                Rp {{ number_format($totalUnpaidFiltered, 0, ',', '.') }}
+            </div>
+            <div class="admin-muted">Sisa tagihan pada filter aktif</div>
         </div>
     </div>
 
@@ -71,13 +133,13 @@
                     @php
                         $hasValidPaymentMethod = in_array(
                             $payment->payment_method,
-                            ['CASH', 'QRIS'],
+                            ['CASH', 'QRIS', 'TRANSFER'],
                             true
                         );
 
-                        // Cash dapat dikonfirmasi langsung oleh Admin.
+                        // Cash dan transfer dapat dikonfirmasi langsung oleh Admin.
                         // QRIS harus memiliki bukti pembayaran terlebih dahulu.
-                        $hasPaymentProof = $payment->payment_method === 'CASH'
+                        $hasPaymentProof = in_array($payment->payment_method, ['CASH', 'TRANSFER'], true)
                             || filled($payment->payment_proof);
 
                         // QRIS hanya dapat dikonfirmasi setelah pelanggan mengunggah bukti

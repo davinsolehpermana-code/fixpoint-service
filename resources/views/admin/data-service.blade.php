@@ -1,3 +1,4 @@
+
 @extends('layouts.admin')
 
 @section('title', 'Data Service')
@@ -53,32 +54,76 @@
                         <div class="admin-primary-text">{{ $service->name }}</div>
                         <div class="admin-muted" style="margin-top:4px;">{{ $service->description ?: 'Tidak ada deskripsi' }}</div>
                     </div>
-                    <div class="admin-inline-actions">
-                        <span class="admin-badge {{ $service->is_active ? 'badge-green' : 'badge-gray' }}">{{ $service->is_active ? 'Aktif' : 'Nonaktif' }}</span>
-                        <span class="admin-muted">{{ $service->estimated_price !== null ? 'Rp ' . number_format((float) $service->estimated_price, 0, ',', '.') : 'Harga ditentukan setelah diagnosis' }}</span>
+
+                    <div class="admin-inline-actions" style="align-items:center;">
+                        <span class="admin-badge {{ $service->is_active ? 'badge-green' : 'badge-gray' }}">
+                            {{ $service->is_active ? 'Tersedia' : 'Tidak Tersedia' }}
+                        </span>
+
+                        <span class="admin-muted">
+                            {{ $service->estimated_price !== null ? 'Rp ' . number_format((float) $service->estimated_price, 0, ',', '.') : 'Harga ditentukan setelah diagnosis' }}
+                        </span>
+
+                        {{-- Toggle status layanan --}}
+                        <form action="{{ route('admin.data-service.toggle', $service->service_id) }}"
+                              method="POST"
+                              onclick="event.stopPropagation();"
+                              style="margin:0;">
+                            @csrf
+                            @method('PATCH')
+
+                            <button type="submit"
+                                    class="admin-btn {{ $service->is_active ? 'admin-btn-outline' : 'admin-btn-success' }}"
+                                    style="padding:6px 12px;font-size:11px;white-space:nowrap;">
+                                {{ $service->is_active ? 'Nonaktifkan' : 'Aktifkan' }}
+                            </button>
+                        </form>
                     </div>
                 </summary>
+
                 <div style="border-top:1px solid #eef2f7;margin-top:13px;padding-top:14px;">
                     <form action="{{ route('admin.data-service.update', $service->service_id) }}" method="POST">
-                        @csrf @method('PUT')
+                        @csrf
+                        @method('PUT')
+
                         <div class="admin-form-grid">
-                            <div class="admin-form-group full"><label class="admin-label">Nama Layanan</label><input class="admin-input" type="text" name="name" value="{{ $service->name }}" maxlength="255" required></div>
-                            <div class="admin-form-group full"><label class="admin-label">Deskripsi</label><textarea class="admin-textarea" name="description" maxlength="2000">{{ $service->description }}</textarea></div>
-                            <div class="admin-form-group"><label class="admin-label">Harga Estimasi (Rp)</label><input class="admin-input" type="number" name="estimated_price" min="0" step="0.01" value="{{ $service->estimated_price }}"></div>
-                            <div class="admin-form-group" style="justify-content:flex-end;"><label class="admin-label" style="display:flex;align-items:center;gap:8px;"><input type="checkbox" name="is_active" value="1" {{ $service->is_active ? 'checked' : '' }}> Aktif</label></div>
-                            <div class="admin-form-group full"><button type="submit" class="admin-btn admin-btn-primary">Simpan Perubahan</button></div>
+                            <div class="admin-form-group full">
+                                <label class="admin-label">Nama Layanan</label>
+                                <input class="admin-input" type="text" name="name" value="{{ $service->name }}" maxlength="255" required>
+                            </div>
+
+                            <div class="admin-form-group full">
+                                <label class="admin-label">Deskripsi</label>
+                                <textarea class="admin-textarea" name="description" maxlength="2000">{{ $service->description }}</textarea>
+                            </div>
+
+                            <div class="admin-form-group">
+                                <label class="admin-label">Harga Estimasi (Rp)</label>
+                                <input class="admin-input" type="number" name="estimated_price" min="0" step="0.01" value="{{ $service->estimated_price }}">
+                            </div>
+
+                            <div class="admin-form-group" style="justify-content:flex-end;">
+                                <label class="admin-label" style="display:flex;align-items:center;gap:8px;">
+                                    <input type="checkbox" name="is_active" value="1" {{ $service->is_active ? 'checked' : '' }}>
+                                    Aktif
+                                </label>
+                            </div>
+
+                            <div class="admin-form-group full">
+                                <button type="submit" class="admin-btn admin-btn-primary">Simpan Perubahan</button>
+                            </div>
                         </div>
-                    </form>
-                    <form action="{{ route('admin.data-service.toggle', $service->service_id) }}" method="POST" style="margin-top:10px;">
-                        @csrf @method('PATCH')
-                        <button type="submit" class="admin-btn admin-btn-outline">{{ $service->is_active ? 'Nonaktifkan Layanan' : 'Aktifkan Layanan' }}</button>
                     </form>
                 </div>
             </details>
         @empty
-            <div class="admin-empty"><strong>Belum ada layanan</strong>Tambahkan layanan melalui form di atas.</div>
+            <div class="admin-empty">
+                <strong>Belum ada layanan</strong>
+                Tambahkan layanan melalui form di atas.
+            </div>
         @endforelse
     </div>
+
     <div class="admin-pagination">{{ $services->links() }}</div>
 </section>
 @endsection

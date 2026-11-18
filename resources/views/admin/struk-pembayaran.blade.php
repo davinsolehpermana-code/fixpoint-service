@@ -262,7 +262,11 @@
         $amount = is_numeric($payment->amount) ? (float) $payment->amount : 0;
         $cashReceived = is_numeric($payment->cash_received) ? (float) $payment->cash_received : null;
         $cashChange = $cashReceived !== null ? max(0, $cashReceived - $amount) : null;
-        $methodLabel = $payment->payment_method === 'CASH' ? 'Cash / Tunai' : 'QRIS';
+        $methodLabel = match ($payment->payment_method) {
+            'CASH' => 'Cash / Tunai',
+            'TRANSFER' => 'Transfer Bank',
+            default => 'QRIS',
+        };
         $deviceName = trim(($payment->device_type ?? '') . ' ' . ($payment->brand ?? '') . ' ' . ($payment->model ?? ''));
     @endphp
 
