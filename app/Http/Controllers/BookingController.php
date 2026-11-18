@@ -1,4 +1,3 @@
-
 <?php
 
 namespace App\Http\Controllers;
@@ -65,7 +64,7 @@ class BookingController extends Controller
                 ->first();
 
             if (
-                !$schedule ||
+                ! $schedule ||
                 $schedule->status !== 'AVAILABLE' ||
                 $schedule->current_booking >= $schedule->max_booking
             ) {
@@ -80,7 +79,7 @@ class BookingController extends Controller
                 ->where('is_active', true)
                 ->first();
 
-            if (!$service) {
+            if (! $service) {
                 return back()->withInput()->with(
                     'error',
                     'Layanan yang dipilih sudah tidak aktif. Silakan pilih layanan lain.'
@@ -91,7 +90,7 @@ class BookingController extends Controller
                 ->where('phone_number', $validated['telepon'])
                 ->first();
 
-            if (!$customer) {
+            if (! $customer) {
                 $customer = Customer::create([
                     'name' => $validated['nama'],
                     'phone_number' => $validated['telepon'],
@@ -111,7 +110,7 @@ class BookingController extends Controller
             ]);
 
             do {
-                $serviceIdCode = 'FP-' . now()->format('Ymd') . '-' . Str::upper(Str::random(5));
+                $serviceIdCode = 'FP-'.now()->format('Ymd').'-'.Str::upper(Str::random(5));
             } while (Booking::query()->where('service_id_code', $serviceIdCode)->exists());
 
             $booking = Booking::create([
@@ -164,7 +163,7 @@ class BookingController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if (!in_array($booking->status, ['PENDING', 'WAITING_VERIFICATION'], true)) {
+            if (! in_array($booking->status, ['PENDING', 'WAITING_VERIFICATION'], true)) {
                 return back()->with('error', 'Booking tidak bisa diverifikasi pada status saat ini.');
             }
 
@@ -212,7 +211,7 @@ class BookingController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if (!in_array($booking->status, ['CONFIRMED', 'COMPLETED'], true)) {
+            if (! in_array($booking->status, ['CONFIRMED', 'COMPLETED'], true)) {
                 throw ValidationException::withMessages([
                     'service_id_code' => 'Terima booking terlebih dahulu sebelum memperbarui proses servis.',
                 ]);
@@ -225,7 +224,7 @@ class BookingController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (!$serviceRecord) {
+            if (! $serviceRecord) {
                 $serviceRecord = ServiceRecord::create([
                     'booking_id' => $booking->booking_id,
                     'handled_by' => $booking->handled_by ?: $adminId,
@@ -238,7 +237,7 @@ class BookingController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (!$payment) {
+            if (! $payment) {
                 throw ValidationException::withMessages([
                     'service_id_code' => 'Data pembayaran untuk booking ini tidak ditemukan. Periksa data booking terlebih dahulu.',
                 ]);
@@ -267,7 +266,7 @@ class BookingController extends Controller
 
             if (
                 $validated['service_status'] === 'COMPLETED' &&
-                !array_key_exists('final_cost', $validated)
+                ! array_key_exists('final_cost', $validated)
             ) {
                 throw ValidationException::withMessages([
                     'final_cost' => 'Masukkan biaya akhir sebelum menandai servis selesai.',
@@ -302,7 +301,7 @@ class BookingController extends Controller
 
             if (
                 $validated['service_status'] === 'PROCESS' &&
-                !$serviceRecord->started_at
+                ! $serviceRecord->started_at
             ) {
                 $serviceRecord->started_at = now();
             }
@@ -317,11 +316,11 @@ class BookingController extends Controller
             $notes = trim((string) ($validated['service_notes'] ?? ''));
 
             if ($duration !== '') {
-                $noteParts[] = 'Estimasi pengerjaan: ' . $duration;
+                $noteParts[] = 'Estimasi pengerjaan: '.$duration;
             }
 
             if ($notes !== '') {
-                $noteParts[] = 'Catatan: ' . $notes;
+                $noteParts[] = 'Catatan: '.$notes;
             }
 
             $serviceRecord->service_notes = $noteParts
@@ -368,7 +367,7 @@ class BookingController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (!$payment) {
+            if (! $payment) {
                 return back()->with('error', 'Data pembayaran tidak ditemukan.');
             }
 
@@ -376,11 +375,11 @@ class BookingController extends Controller
                 return back()->with('success', 'Pembayaran untuk Service ID ini sudah lunas.');
             }
 
-            if (!in_array($payment->payment_method, ['CASH', 'QRIS', 'TRANSFER'], true)) {
+            if (! in_array($payment->payment_method, ['CASH', 'QRIS', 'TRANSFER'], true)) {
                 return back()->with('error', 'Metode pembayaran belum tercatat dengan benar.');
             }
 
-            if (!is_numeric($payment->amount) || (float) $payment->amount <= 0) {
+            if (! is_numeric($payment->amount) || (float) $payment->amount <= 0) {
                 return back()->with('error', 'Pembayaran belum dapat dikonfirmasi karena biaya akhir belum tersedia.');
             }
 
@@ -388,7 +387,7 @@ class BookingController extends Controller
                 ->where('booking_id', $booking->booking_id)
                 ->first();
 
-            if (!$serviceRecord || $serviceRecord->service_status !== 'COMPLETED') {
+            if (! $serviceRecord || $serviceRecord->service_status !== 'COMPLETED') {
                 return back()->with('error', 'Catatan servis belum berstatus selesai.');
             }
 

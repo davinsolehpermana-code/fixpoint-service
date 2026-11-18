@@ -47,7 +47,7 @@ class StatusController extends Controller
             ->where('service_id_code', $code)
             ->first();
 
-        if (!$booking) {
+        if (! $booking) {
             return redirect()
                 ->route('cek-status')
                 ->withInput(['code' => $code])
@@ -87,7 +87,7 @@ class StatusController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if (!in_array($booking->status, ['PENDING', 'WAITING_VERIFICATION'], true)) {
+            if (! in_array($booking->status, ['PENDING', 'WAITING_VERIFICATION'], true)) {
                 return 'Booking tidak dapat dibatalkan karena sudah dikonfirmasi, sedang dikerjakan, atau telah selesai.';
             }
 
@@ -126,9 +126,10 @@ class StatusController extends Controller
     }
 
     /**
-     * Mengunggah bukti pembayaran QRIS setelah servis selesai dan tagihan tersedia.
-     * Metode pembayaran tidak diubah oleh pelanggan; sistem memakai metode yang
-     * sudah dipilih saat booking.
+     * Mengunggah bukti pembayaran QRIS atau transfer setelah servis selesai dan
+     * tagihan tersedia. Metode pembayaran tidak diubah oleh pelanggan; sistem
+     * memakai metode yang sudah dipilih saat booking. Bukti transfer juga berhenti
+     * di status WAITING_VERIFICATION sampai Admin mengonfirmasi.
      */
     public function uploadProof(Request $request): RedirectResponse
     {
@@ -170,15 +171,15 @@ class StatusController extends Controller
                     ->lockForUpdate()
                     ->first();
 
-                if (!$payment) {
+                if (! $payment) {
                     return 'Data pembayaran belum tersedia. Silakan hubungi Admin.';
                 }
 
-                if ($payment->payment_method !== 'QRIS') {
-                    return 'Upload bukti hanya tersedia untuk pembayaran dengan metode QRIS.';
+                if (! in_array($payment->payment_method, ['QRIS', 'TRANSFER'], true)) {
+                    return 'Upload bukti hanya tersedia untuk pembayaran dengan metode QRIS atau Transfer Bank.';
                 }
 
-                if (!is_numeric($payment->amount) || (float) $payment->amount <= 0) {
+                if (! is_numeric($payment->amount) || (float) $payment->amount <= 0) {
                     return 'Tagihan belum ditetapkan. Silakan periksa kembali setelah Admin memperbarui biaya servis.';
                 }
 
@@ -221,7 +222,10 @@ class StatusController extends Controller
 
         return redirect()
             ->route('cek-status.show', ['code' => $code])
-            ->with('success', 'Bukti pembayaran berhasil dikirim. Pembayaran sedang menunggu verifikasi Admin.');
+            ->with(
+                'success',
+                'Bukti pembayaran berhasil dikirim. Pembayaran sedang menunggu verifikasi Admin.'
+            );
     }
 
     /**

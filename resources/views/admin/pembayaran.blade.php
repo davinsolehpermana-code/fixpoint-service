@@ -203,16 +203,16 @@
                             @endif
                         </td>
 
-                        {{-- Bukti pembayaran hanya diperlukan untuk QRIS --}}
+                        {{-- Bukti unggahan pelanggan (QRIS maupun transfer) dapat dibuka Admin. --}}
                         <td>
-                            @if ($payment->payment_method === 'QRIS')
+                            @if (in_array($payment->payment_method, ['QRIS', 'TRANSFER'], true))
                                 @if ($payment->payment_proof)
                                     <a href="{{ route('admin.payments.proof', $payment->payment_id) }}"
                                        target="_blank"
                                        rel="noopener"
                                        class="qris-proof-link">
                                         <img src="{{ route('admin.payments.proof', $payment->payment_id) }}"
-                                             alt="Bukti QRIS {{ $payment->service_id_code }}"
+                                             alt="Bukti {{ $payment->payment_method }} {{ $payment->service_id_code }}"
                                              class="qris-proof-thumb"
                                              loading="lazy">
                                         <span>Lihat bukti</span>

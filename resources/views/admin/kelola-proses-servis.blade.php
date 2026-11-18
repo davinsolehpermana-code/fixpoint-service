@@ -1,3 +1,4 @@
+
 @extends('layouts.admin')
 
 @section('title', 'Kelola Proses Servis')
@@ -14,9 +15,12 @@
 <div class="admin-toolbar">
     <form action="{{ route('admin.service-process') }}" method="GET" class="admin-search">
         <input type="text" name="q" class="admin-input" value="{{ $search }}" placeholder="Cari Service ID, pelanggan, atau perangkat...">
-        @if($statusFilter !== 'active')<input type="hidden" name="status" value="{{ $statusFilter }}">@endif
+        @if($statusFilter !== 'active')
+            <input type="hidden" name="status" value="{{ $statusFilter }}">
+        @endif
         <button type="submit" class="admin-btn admin-btn-primary">Cari</button>
     </form>
+
     <div class="admin-filter">
         <a class="admin-filter-link {{ $statusFilter === 'active' ? 'active' : '' }}" href="{{ route('admin.service-process', ['status' => 'active']) }}">Aktif</a>
         <a class="admin-filter-link {{ $statusFilter === 'waiting' ? 'active' : '' }}" href="{{ route('admin.service-process', ['status' => 'waiting']) }}">Menunggu</a>
@@ -33,15 +37,26 @@
         </div>
         <span class="admin-badge badge-blue">{{ $bookings->total() }} data</span>
     </div>
+
     <div class="admin-table-wrap">
         <table class="admin-table">
             <thead>
-                <tr><th>Service ID</th><th>Pelanggan</th><th>Perangkat</th><th>Layanan</th><th>Status Servis</th><th>Pembayaran</th><th>Aksi</th></tr>
+                <tr>
+                    <th>Service ID</th>
+                    <th>Pelanggan</th>
+                    <th>Perangkat</th>
+                    <th>Layanan</th>
+                    <th>Status Servis</th>
+                    <th>Pembayaran</th>
+                    <th>Aksi</th>
+                </tr>
             </thead>
+
             <tbody>
                 @forelse($bookings as $booking)
                     @php
                         $isPaid = $booking->payment_status === 'PAID';
+
                         $stateLabel = match ($booking->booking_status) {
                             'PENDING' => 'Menunggu',
                             'WAITING_VERIFICATION' => 'Perlu Verifikasi',
@@ -55,66 +70,209 @@
                             'CANCELLED' => 'Dibatalkan',
                             default => $booking->booking_status,
                         };
+
                         $stateClass = in_array($booking->booking_status, ['PENDING', 'WAITING_VERIFICATION'], true)
                             ? 'badge-yellow'
                             : (in_array($booking->booking_status, ['REJECTED', 'CANCELLED'], true)
                                 ? 'badge-red'
                                 : ($booking->booking_status === 'COMPLETED' ? 'badge-green' : 'badge-blue'));
                     @endphp
+
                     <tr>
-                        <td><span class="admin-id">{{ $booking->service_id_code }}</span></td>
-                        <td><span class="admin-primary-text">{{ $booking->customer_name ?? '-' }}</span><div class="admin-muted">{{ $booking->phone_number ?? '' }}</div></td>
-                        <td>{{ trim(($booking->device_type ?? '') . ' ' . ($booking->brand ?? '')) ?: '-' }}</td>
+                        <td>
+                            <span class="admin-id">{{ $booking->service_id_code }}</span>
+                        </td>
+
+                        <td>
+                            <span class="admin-primary-text">{{ $booking->customer_name ?? '-' }}</span>
+                            <div class="admin-muted">{{ $booking->phone_number ?? '' }}</div>
+                        </td>
+
+                        <td>
+                            {{ trim(($booking->device_type ?? '') . ' ' . ($booking->brand ?? '')) ?: '-' }}
+                        </td>
+
                         <td>{{ $booking->service_name ?? '-' }}</td>
-                        <td><span class="admin-badge {{ $stateClass }}">{{ $stateLabel }}</span></td>
+
+                        <td>
+                            <span class="admin-badge {{ $stateClass }}">{{ $stateLabel }}</span>
+                        </td>
+
                         <td>
                             @if($isPaid)
                                 <span class="admin-badge badge-green">Lunas</span>
                             @elseif($booking->booking_status === 'COMPLETED')
                                 <span class="admin-badge badge-yellow">Belum Bayar</span>
+
                                 @if((float) $booking->payment_amount > 0)
-                                    <div class="admin-muted" style="margin-top:5px;">Rp {{ number_format((float) $booking->payment_amount, 0, ',', '.') }}</div>
+                                    <div class="admin-muted" style="margin-top:5px;">
+                                        Rp {{ number_format((float) $booking->payment_amount, 0, ',', '.') }}
+                                    </div>
                                 @endif
                             @else
-                                <span class="admin-badge badge-gray">{{ $booking->payment_method ?? 'Belum tercatat' }}</span>
+                                <span class="admin-badge badge-gray">
+                                    {{ $booking->payment_method ?? 'Belum tercatat' }}
+                                </span>
                             @endif
                         </td>
+
                         <td>
                             <div class="admin-inline-actions">
-                            @if(in_array($booking->booking_status, ['PENDING', 'WAITING_VERIFICATION'], true))
-                                <form action="{{ route('admin.booking.verify', $booking->booking_id) }}" method="POST" class="js-admin-confirm">
-                                    @csrf @method('PUT')
-                                    <input type="hidden" name="_confirm_title" value="Terima Booking">
-                                    <input type="hidden" name="_confirm_message" value="Booking ini akan diterima dan catatan servis akan disiapkan. Lanjutkan?">
-                                    <input type="hidden" name="_confirm_button" value="Ya, Terima Booking">
-                                    <input type="hidden" name="_confirm_tone" value="primary">
-                                    <input type="hidden" name="_confirm_details" value="{{ $booking->service_id_code }}|{{ $booking->customer_name ?? '-' }}">
-                                    <button type="submit" class="admin-btn admin-btn-success">Terima</button>
-                                </form>
-                            @elseif($booking->booking_status === 'CONFIRMED')
-                                <button type="button" class="admin-btn admin-btn-soft js-select-service" data-service-code="{{ $booking->service_id_code }}">Kelola</button>
-                            @elseif($booking->booking_status === 'COMPLETED' && !$isPaid)
-                                <a href="{{ route('admin.payments', ['q' => $booking->service_id_code, 'status' => 'unpaid']) }}" class="admin-btn admin-btn-soft">Pembayaran</a>
-                            @else
-                                <span class="admin-muted">—</span>
-                            @endif
-                            @if(in_array($booking->booking_status, ['PENDING', 'WAITING_VERIFICATION', 'CONFIRMED'], true)
-                                && !in_array($booking->service_status, ['PROCESS', 'COMPLETED'], true))
-                                <button type="button" class="admin-btn admin-btn-danger js-cancel-booking"
-                                    data-cancel-url="{{ route('admin.booking.cancel', $booking->booking_id) }}"
-                                    data-code="{{ $booking->service_id_code }}"
-                                    data-customer="{{ $booking->customer_name ?? '-' }}">Batalkan</button>
-                            @endif
+                                @if(in_array($booking->booking_status, ['PENDING', 'WAITING_VERIFICATION'], true))
+                                    <form action="{{ route('admin.booking.verify', $booking->booking_id) }}" method="POST" class="js-admin-confirm">
+                                        @csrf
+                                        @method('PUT')
+
+                                        <input type="hidden" name="_confirm_title" value="Terima Booking">
+                                        <input type="hidden" name="_confirm_message" value="Booking ini akan diterima dan catatan servis akan disiapkan. Lanjutkan?">
+                                        <input type="hidden" name="_confirm_button" value="Ya, Terima Booking">
+                                        <input type="hidden" name="_confirm_tone" value="primary">
+                                        <input type="hidden" name="_confirm_details" value="{{ $booking->service_id_code }}|{{ $booking->customer_name ?? '-' }}">
+
+                                        <button type="submit" class="admin-btn admin-btn-success">
+                                            Terima
+                                        </button>
+                                    </form>
+
+                                @elseif($booking->booking_status === 'CONFIRMED')
+                                    <button
+                                        type="button"
+                                        class="admin-btn admin-btn-soft js-select-service"
+                                        data-service-code="{{ $booking->service_id_code }}">
+                                        Kelola
+                                    </button>
+
+                                @elseif($booking->booking_status === 'COMPLETED' && !$isPaid)
+                                    <a href="{{ route('admin.payments', ['q' => $booking->service_id_code, 'status' => 'unpaid']) }}"
+                                       class="admin-btn admin-btn-soft">
+                                        Pembayaran
+                                    </a>
+                                @else
+                                    <span class="admin-muted">—</span>
+                                @endif
+
+                                @if(in_array($booking->booking_status, ['PENDING', 'WAITING_VERIFICATION', 'CONFIRMED'], true)
+                                    && !in_array($booking->service_status, ['PROCESS', 'COMPLETED'], true))
+                                    <button
+                                        type="button"
+                                        class="admin-btn admin-btn-danger js-cancel-booking"
+                                        data-cancel-url="{{ route('admin.booking.cancel', $booking->booking_id) }}"
+                                        data-code="{{ $booking->service_id_code }}"
+                                        data-customer="{{ $booking->customer_name ?? '-' }}">
+                                        Batalkan
+                                    </button>
+                                @endif
                             </div>
                         </td>
                     </tr>
+
                 @empty
-                    <tr><td colspan="7"><div class="admin-empty"><strong>Tidak ada data booking</strong>Data booking sesuai filter akan muncul di sini.</div></td></tr>
+                    <tr>
+                        <td colspan="7">
+                            <div class="admin-empty">
+                                <strong>Tidak ada data booking</strong>
+                                Data booking sesuai filter akan muncul di sini.
+                            </div>
+                        </td>
+                    </tr>
                 @endforelse
             </tbody>
         </table>
     </div>
-    <div class="admin-pagination">{{ $bookings->links() }}</div>
+
+    {{-- PAGINATION CUSTOM FIXPOINT --}}
+    @php
+        $queryParams = request()->query();
+        unset($queryParams['page']);
+
+        $pagination = $bookings->appends($queryParams);
+
+        $currentPage = $pagination->currentPage();
+        $lastPage = $pagination->lastPage();
+
+        $startPage = max(1, $currentPage - 2);
+        $endPage = min($lastPage, $currentPage + 2);
+
+        if ($currentPage <= 3) {
+            $endPage = min($lastPage, 5);
+        }
+
+        if ($currentPage >= $lastPage - 2) {
+            $startPage = max(1, $lastPage - 4);
+        }
+    @endphp
+
+    <div class="fixpoint-pagination">
+        <div class="fixpoint-pagination-info">
+            @if($pagination->total() > 0)
+                Menampilkan
+                <strong>{{ $pagination->firstItem() }}–{{ $pagination->lastItem() }}</strong>
+                dari
+                <strong>{{ $pagination->total() }}</strong> data
+            @else
+                Tidak ada data
+            @endif
+        </div>
+
+        @if($pagination->hasPages())
+            <nav class="fixpoint-pagination-links" aria-label="Navigasi halaman">
+
+                {{-- Sebelumnya --}}
+                @if($pagination->onFirstPage())
+                    <span class="fixpoint-page-btn disabled">‹ Sebelumnya</span>
+                @else
+                    <a href="{{ $pagination->previousPageUrl() }}" class="fixpoint-page-btn">
+                        ‹ Sebelumnya
+                    </a>
+                @endif
+
+                {{-- Halaman pertama --}}
+                @if($startPage > 1)
+                    <a href="{{ $pagination->url(1) }}" class="fixpoint-page-btn">1</a>
+
+                    @if($startPage > 2)
+                        <span class="fixpoint-page-dots">...</span>
+                    @endif
+                @endif
+
+                {{-- Nomor halaman --}}
+                @for($page = $startPage; $page <= $endPage; $page++)
+                    @if($page === $currentPage)
+                        <span class="fixpoint-page-btn active" aria-current="page">
+                            {{ $page }}
+                        </span>
+                    @else
+                        <a href="{{ $pagination->url($page) }}" class="fixpoint-page-btn">
+                            {{ $page }}
+                        </a>
+                    @endif
+                @endfor
+
+                {{-- Halaman terakhir --}}
+                @if($endPage < $lastPage)
+                    @if($endPage < $lastPage - 1)
+                        <span class="fixpoint-page-dots">...</span>
+                    @endif
+
+                    <a href="{{ $pagination->url($lastPage) }}" class="fixpoint-page-btn">
+                        {{ $lastPage }}
+                    </a>
+                @endif
+
+                {{-- Selanjutnya --}}
+                @if($pagination->hasMorePages())
+                    <a href="{{ $pagination->nextPageUrl() }}" class="fixpoint-page-btn">
+                        Selanjutnya ›
+                    </a>
+                @else
+                    <span class="fixpoint-page-btn disabled">
+                        Selanjutnya ›
+                    </span>
+                @endif
+
+            </nav>
+        @endif
+    </div>
 </section>
 
 <section class="admin-card" id="serviceUpdateCard">
@@ -126,23 +284,33 @@
     </div>
 
     @if($manageableBookings->isEmpty())
-        <div class="admin-callout"><strong>i</strong><span>Belum ada booking yang siap dikelola. Terima booking terlebih dahulu dari daftar di atas.</span></div>
+        <div class="admin-callout">
+            <strong>i</strong>
+            <span>Belum ada booking yang siap dikelola. Terima booking terlebih dahulu dari daftar di atas.</span>
+        </div>
     @else
         <form action="{{ route('admin.booking.update') }}" method="POST" id="serviceUpdateForm">
             @csrf
+
             <div class="admin-form-grid">
                 <div class="admin-form-group full">
                     <label class="admin-label" for="serviceIdSelect">Service ID</label>
+
                     <select name="service_id_code" id="serviceIdSelect" class="admin-select" required>
                         <option value="">Pilih booking yang akan dikelola</option>
+
                         @foreach($manageableBookings as $item)
                             @php
                                 $storedNotes = (string) ($item->service_notes ?? '');
+
                                 preg_match('/Estimasi pengerjaan:\s*(.+)/u', $storedNotes, $durationMatch);
+
                                 $noteText = preg_replace('/Estimasi pengerjaan:\s*.+(?:\R|$)/u', '', $storedNotes);
                                 $noteText = preg_replace('/^Catatan:\s*/u', '', trim((string) $noteText));
                             @endphp
-                            <option value="{{ $item->service_id_code }}"
+
+                            <option
+                                value="{{ $item->service_id_code }}"
                                 data-customer="{{ $item->customer_name }}"
                                 data-device="{{ trim(($item->device_type ?? '') . ' ' . ($item->brand ?? '')) }}"
                                 data-method="{{ $item->payment_method ?? '-' }}"
@@ -157,22 +325,30 @@
                             </option>
                         @endforeach
                     </select>
-                    @error('service_id_code')<span class="admin-help" style="color:#dc2626;">{{ $message }}</span>@enderror
+
+                    @error('service_id_code')
+                        <span class="admin-help" style="color:#dc2626;">{{ $message }}</span>
+                    @enderror
                 </div>
 
                 <div class="admin-form-group">
                     <label class="admin-label">Pelanggan</label>
                     <div class="admin-input" id="selectedCustomer">—</div>
                 </div>
+
                 <div class="admin-form-group">
                     <label class="admin-label">Perangkat</label>
                     <div class="admin-input" id="selectedDevice">—</div>
                 </div>
+
                 <div class="admin-form-group full">
                     <label class="admin-label">Metode Pembayaran (otomatis)</label>
                     <div class="admin-input" id="selectedPaymentMethod">—</div>
-                    <span class="admin-help">Metode pembayaran diambil dari pilihan pelanggan saat booking dan tidak perlu diinput ulang.</span>
+                    <span class="admin-help">
+                        Metode pembayaran diambil dari pilihan pelanggan saat booking dan tidak perlu diinput ulang.
+                    </span>
                 </div>
+
                 <div class="admin-form-group full">
                     <label class="admin-label" for="serviceStatusSelect">Tahap Servis</label>
                     <select name="service_status" id="serviceStatusSelect" class="admin-select" required>
@@ -181,29 +357,37 @@
                         <option value="COMPLETED" {{ old('service_status') === 'COMPLETED' ? 'selected' : '' }}>Selesai</option>
                     </select>
                 </div>
+
                 <div class="admin-form-group full">
                     <label class="admin-label" for="diagnosisInput">Hasil Diagnosis</label>
                     <textarea name="diagnosis" id="diagnosisInput" class="admin-textarea" rows="3" placeholder="Tuliskan hasil pemeriksaan perangkat...">{{ old('diagnosis') }}</textarea>
                 </div>
+
                 <div class="admin-form-group">
                     <label class="admin-label" for="estimatedDurationInput">Estimasi Pengerjaan</label>
                     <input type="text" name="estimated_duration" id="estimatedDurationInput" class="admin-input" value="{{ old('estimated_duration') }}" placeholder="Contoh: 2–3 hari kerja">
                 </div>
+
                 <div class="admin-form-group">
                     <label class="admin-label" for="estimatedCostInput">Estimasi Biaya (Rp)</label>
                     <input type="number" name="estimated_cost" id="estimatedCostInput" class="admin-input" min="0" max="9999999999.99" step="0.01" value="{{ old('estimated_cost') }}" placeholder="Contoh: 150000">
                 </div>
+
                 <div class="admin-form-group full">
                     <label class="admin-label" for="finalCostInput">Biaya Akhir (Rp)</label>
                     <input type="number" name="final_cost" id="finalCostInput" class="admin-input" min="1" max="9999999999.99" step="0.01" value="{{ old('final_cost') }}" placeholder="Wajib diisi saat servis selesai">
                     <span class="admin-help">Biaya akhir menjadi nominal tagihan pada halaman Pembayaran.</span>
                 </div>
+
                 <div class="admin-form-group full">
                     <label class="admin-label" for="serviceNotesInput">Catatan Servis</label>
                     <textarea name="service_notes" id="serviceNotesInput" class="admin-textarea" rows="3" placeholder="Catatan tambahan atau kendala pengerjaan...">{{ old('service_notes') }}</textarea>
                 </div>
+
                 <div class="admin-form-group full">
-                    <button type="submit" id="serviceUpdateSubmitBtn" class="admin-btn admin-btn-primary" style="width:100%;">Simpan Perubahan Servis</button>
+                    <button type="submit" id="serviceUpdateSubmitBtn" class="admin-btn admin-btn-primary" style="width:100%;">
+                        Simpan Perubahan Servis
+                    </button>
                 </div>
             </div>
         </form>
@@ -212,25 +396,188 @@
 
 @include('admin.partials.cancel-booking-modal')
 
-<div class="admin-confirm-overlay" id="adminConfirmModal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="adminConfirmTitle" style="position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.56);display:none;align-items:center;justify-content:center;padding:18px;">
+<div
+    class="admin-confirm-overlay"
+    id="adminConfirmModal"
+    hidden
+    aria-hidden="true"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="adminConfirmTitle"
+    style="position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.56);display:none;align-items:center;justify-content:center;padding:18px;">
+
     <div style="width:min(100%,440px);background:#fff;border-radius:17px;padding:23px;box-shadow:0 25px 70px rgba(15,23,42,.25);">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;">
-            <h2 id="adminConfirmTitle" style="font-size:18px;font-weight:800;margin:0;color:#0f172a;">Konfirmasi</h2>
-            <button type="button" id="adminConfirmClose" aria-label="Tutup" style="border:0;background:#f1f5f9;border-radius:8px;width:32px;height:32px;font-size:19px;cursor:pointer;">×</button>
+            <h2 id="adminConfirmTitle" style="font-size:18px;font-weight:800;margin:0;color:#0f172a;">
+                Konfirmasi
+            </h2>
+
+            <button
+                type="button"
+                id="adminConfirmClose"
+                aria-label="Tutup"
+                style="border:0;background:#f1f5f9;border-radius:8px;width:32px;height:32px;font-size:19px;cursor:pointer;">
+                ×
+            </button>
         </div>
+
         <p id="adminConfirmMessage" style="font-size:13px;line-height:1.6;color:#64748b;margin:0 0 15px;"></p>
+
         <div id="adminConfirmDetails" style="background:#f8fafc;border:1px solid #eef2f7;border-radius:11px;padding:12px;margin-bottom:18px;font-size:12px;color:#334155;line-height:1.8;"></div>
+
         <div style="display:flex;justify-content:flex-end;gap:9px;">
-            <button type="button" id="adminConfirmCancel" class="admin-btn admin-btn-outline">Batal</button>
-            <button type="button" id="adminConfirmSubmit" class="admin-btn admin-btn-primary">Ya, Lanjutkan</button>
+            <button type="button" id="adminConfirmCancel" class="admin-btn admin-btn-outline">
+                Batal
+            </button>
+
+            <button type="button" id="adminConfirmSubmit" class="admin-btn admin-btn-primary">
+                Ya, Lanjutkan
+            </button>
         </div>
     </div>
 </div>
 
 <style>
-    .admin-confirm-overlay:not([hidden]){display:flex!important}
-    body.admin-confirm-open{overflow:hidden}
+    /* ========================================
+       PAGINATION FIXPOINT SERVICE
+    ======================================== */
+
+    .fixpoint-pagination,
+    .fixpoint-pagination * {
+        box-sizing: border-box;
+    }
+
+    .fixpoint-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 14px;
+        width: 100%;
+        padding: 18px 20px;
+        border-top: 1px solid #e8edf5;
+        background: #fff;
+        overflow: visible;
+    }
+
+    .fixpoint-pagination-info {
+        color: #64748b;
+        font-size: 12px;
+        line-height: 1.5;
+    }
+
+    .fixpoint-pagination-info strong {
+        color: #172554;
+        font-weight: 700;
+    }
+
+    .fixpoint-pagination-links {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 6px;
+        width: auto;
+        margin: 0;
+        padding: 0;
+    }
+
+    .fixpoint-pagination-links svg {
+        width: 14px !important;
+        height: 14px !important;
+        max-width: 14px !important;
+        max-height: 14px !important;
+    }
+
+    .fixpoint-page-btn {
+        display: inline-flex !important;
+        flex: 0 0 auto !important;
+        flex-direction: row !important;
+        align-items: center;
+        justify-content: center;
+        min-width: 34px;
+        width: auto;
+        height: 34px;
+        padding: 0 10px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: #fff;
+        color: #334155;
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1;
+        text-decoration: none;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: background .2s ease, border-color .2s ease, color .2s ease;
+    }
+
+    .fixpoint-page-btn:hover:not(.disabled):not(.active) {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+        color: #1e40af;
+    }
+
+    .fixpoint-page-btn.active {
+        background: #2563eb;
+        border-color: #2563eb;
+        color: #fff;
+        cursor: default;
+    }
+
+    .fixpoint-page-btn.disabled {
+        background: #f8fafc;
+        color: #94a3b8;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+
+    .fixpoint-page-dots {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 20px;
+        color: #94a3b8;
+        font-size: 13px;
+    }
+
+    /* ========================================
+       CONFIRMATION MODAL
+    ======================================== */
+
+    .admin-confirm-overlay:not([hidden]) {
+        display: flex !important;
+    }
+
+    body.admin-confirm-open {
+        overflow: hidden;
+    }
+
+    /* ========================================
+       RESPONSIVE
+    ======================================== */
+
+    @media (max-width: 640px) {
+        .fixpoint-pagination {
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 16px;
+        }
+
+        .fixpoint-pagination-links {
+            justify-content: flex-start;
+            width: 100%;
+        }
+
+        .fixpoint-page-btn {
+            min-width: 32px;
+            height: 32px;
+        }
+    }
 </style>
+
 <script>
 (() => {
     const select = document.getElementById('serviceIdSelect');
@@ -241,60 +588,99 @@
 
     function updateFormFromSelection(populate = true) {
         if (!select) return;
+
         const option = select.options[select.selectedIndex];
+
         const setText = (id, value) => {
             const element = document.getElementById(id);
             if (element) element.textContent = value || '—';
         };
+
         if (!option || !option.value) {
             setText('selectedCustomer', '—');
             setText('selectedDevice', '—');
             setText('selectedPaymentMethod', '—');
             return;
         }
+
         setText('selectedCustomer', option.dataset.customer);
         setText('selectedDevice', option.dataset.device);
         setText('selectedPaymentMethod', option.dataset.method);
+
         if (populate) {
-            if (status) status.value = ['DIAGNOSIS', 'PROCESS', 'COMPLETED'].includes(option.dataset.status) ? option.dataset.status : 'DIAGNOSIS';
+            if (status) {
+                status.value = ['DIAGNOSIS', 'PROCESS', 'COMPLETED'].includes(option.dataset.status)
+                    ? option.dataset.status
+                    : 'DIAGNOSIS';
+            }
+
             document.getElementById('diagnosisInput').value = option.dataset.diagnosis || '';
             document.getElementById('estimatedDurationInput').value = option.dataset.duration || '';
             document.getElementById('estimatedCostInput').value = option.dataset.estimatedCost || '';
-            if (finalCost) finalCost.value = option.dataset.finalCost || '';
+
+            if (finalCost) {
+                finalCost.value = option.dataset.finalCost || '';
+            }
+
             document.getElementById('serviceNotesInput').value = option.dataset.notes || '';
         }
+
         updateStatusRequirement();
     }
 
     function updateStatusRequirement() {
         if (!status || !finalCost) return;
+
         const completed = status.value === 'COMPLETED';
+
         finalCost.required = completed;
-        finalCost.placeholder = completed ? 'Masukkan biaya akhir' : 'Diisi saat status Selesai';
-        if (submitButton) submitButton.textContent = completed ? 'Selesaikan Servis' : 'Simpan Perubahan Servis';
+        finalCost.placeholder = completed
+            ? 'Masukkan biaya akhir'
+            : 'Diisi saat status Selesai';
+
+        if (submitButton) {
+            submitButton.textContent = completed
+                ? 'Selesaikan Servis'
+                : 'Simpan Perubahan Servis';
+        }
     }
 
     if (select) {
         select.addEventListener('change', () => updateFormFromSelection(true));
-        if (select.value) updateFormFromSelection({{ old('service_id_code') ? 'false' : 'true' }});
+
+        if (select.value) {
+            updateFormFromSelection({{ old('service_id_code') ? 'false' : 'true' }});
+        }
     }
-    if (status) status.addEventListener('change', updateStatusRequirement);
+
+    if (status) {
+        status.addEventListener('change', updateStatusRequirement);
+    }
+
     updateStatusRequirement();
 
     document.querySelectorAll('.js-select-service').forEach((button) => {
         button.addEventListener('click', () => {
             if (!select) return;
+
             select.value = button.dataset.serviceCode;
             updateFormFromSelection(true);
-            document.getElementById('serviceUpdateCard')?.scrollIntoView({behavior:'smooth', block:'start'});
+
+            document.getElementById('serviceUpdateCard')
+                ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
     });
+
+    /* ========================================
+       MODAL KONFIRMASI ADMIN
+    ======================================== */
 
     const modal = document.getElementById('adminConfirmModal');
     const modalTitle = document.getElementById('adminConfirmTitle');
     const modalMessage = document.getElementById('adminConfirmMessage');
     const modalDetails = document.getElementById('adminConfirmDetails');
     const modalSubmit = document.getElementById('adminConfirmSubmit');
+
     let pendingForm = null;
     let approvedForm = null;
     let previousFocus = null;
@@ -302,83 +688,146 @@
     function openModal(targetForm, title, message, buttonText, details) {
         pendingForm = targetForm;
         previousFocus = document.activeElement;
+
         modalTitle.textContent = title;
         modalMessage.textContent = message;
         modalSubmit.textContent = buttonText;
+
         modalDetails.replaceChildren();
+
         (details || []).forEach(([label, value]) => {
             if (!value) return;
+
             const row = document.createElement('div');
+
             row.style.display = 'flex';
             row.style.justifyContent = 'space-between';
             row.style.gap = '15px';
+
             const left = document.createElement('span');
             left.style.color = '#64748b';
             left.textContent = label;
+
             const right = document.createElement('strong');
             right.style.textAlign = 'right';
             right.textContent = value;
+
             row.append(left, right);
             modalDetails.appendChild(row);
         });
+
         modal.hidden = false;
         modal.setAttribute('aria-hidden', 'false');
+
         document.body.classList.add('admin-confirm-open');
+
         modalSubmit.focus();
     }
 
     function closeModal() {
         if (!modal || modal.hidden) return;
+
         modal.hidden = true;
         modal.setAttribute('aria-hidden', 'true');
+
         document.body.classList.remove('admin-confirm-open');
+
         pendingForm = null;
+
         previousFocus?.focus?.();
     }
 
     document.querySelectorAll('form.js-admin-confirm').forEach((targetForm) => {
         targetForm.addEventListener('submit', (event) => {
-            if (approvedForm === targetForm) { approvedForm = null; return; }
+            if (approvedForm === targetForm) {
+                approvedForm = null;
+                return;
+            }
+
             event.preventDefault();
-            const values = (targetForm.querySelector('[name="_confirm_details"]')?.value || '').split('|');
+
+            const values = (
+                targetForm.querySelector('[name="_confirm_details"]')?.value || ''
+            ).split('|');
+
             openModal(
                 targetForm,
                 targetForm.querySelector('[name="_confirm_title"]')?.value || 'Konfirmasi Tindakan',
                 targetForm.querySelector('[name="_confirm_message"]')?.value || 'Lanjutkan tindakan ini?',
                 targetForm.querySelector('[name="_confirm_button"]')?.value || 'Ya, Lanjutkan',
-                [['Service ID', values[0]], ['Pelanggan', values[1]]]
+                [
+                    ['Service ID', values[0]],
+                    ['Pelanggan', values[1]]
+                ]
             );
         });
     });
 
     if (form) {
         form.addEventListener('submit', (event) => {
-            if (approvedForm === form) { approvedForm = null; return; }
+            if (approvedForm === form) {
+                approvedForm = null;
+                return;
+            }
+
             if (!status || status.value !== 'COMPLETED') return;
+
             event.preventDefault();
+
             const option = select?.options[select.selectedIndex];
-            const amount = finalCost?.value ? 'Rp ' + new Intl.NumberFormat('id-ID').format(Number(finalCost.value)) : '—';
-            openModal(form, 'Selesaikan Servis', 'Pastikan pengerjaan sudah selesai dan biaya akhir sudah benar.', 'Ya, Selesaikan Servis', [
-                ['Service ID', option?.value || '—'],
-                ['Pelanggan', option?.dataset.customer || '—'],
-                ['Biaya Akhir', amount],
-            ]);
+
+            const amount = finalCost?.value
+                ? 'Rp ' + new Intl.NumberFormat('id-ID').format(Number(finalCost.value))
+                : '—';
+
+            openModal(
+                form,
+                'Selesaikan Servis',
+                'Pastikan pengerjaan sudah selesai dan biaya akhir sudah benar.',
+                'Ya, Selesaikan Servis',
+                [
+                    ['Service ID', option?.value || '—'],
+                    ['Pelanggan', option?.dataset.customer || '—'],
+                    ['Biaya Akhir', amount]
+                ]
+            );
         });
     }
 
     modalSubmit?.addEventListener('click', () => {
         if (!pendingForm) return;
+
         const targetForm = pendingForm;
+
         pendingForm = null;
         approvedForm = targetForm;
+
         closeModal();
-        if (targetForm.requestSubmit) targetForm.requestSubmit();
-        else HTMLFormElement.prototype.submit.call(targetForm);
+
+        if (targetForm.requestSubmit) {
+            targetForm.requestSubmit();
+        } else {
+            HTMLFormElement.prototype.submit.call(targetForm);
+        }
     });
-    document.getElementById('adminConfirmCancel')?.addEventListener('click', closeModal);
-    document.getElementById('adminConfirmClose')?.addEventListener('click', closeModal);
-    modal?.addEventListener('click', (event) => { if (event.target === modal) closeModal(); });
-    document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeModal(); });
+
+    document.getElementById('adminConfirmCancel')
+        ?.addEventListener('click', closeModal);
+
+    document.getElementById('adminConfirmClose')
+        ?.addEventListener('click', closeModal);
+
+    modal?.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            closeModal();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeModal();
+        }
+    });
 })();
 </script>
 @endsection

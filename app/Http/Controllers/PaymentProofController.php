@@ -36,7 +36,8 @@ class PaymentProofController extends Controller
     /** Mengirim gambar sebagai inline response tanpa membangun URL storage publik di Blade. */
     private function streamProof(Payment $payment)
     {
-        abort_unless($payment->payment_method === 'QRIS', 404);
+        // Bukti QRIS dan transfer sama-sama berupa gambar yang perlu diperiksa Admin.
+        abort_unless(in_array($payment->payment_method, ['QRIS', 'TRANSFER'], true), 404);
 
         $path = (string) $payment->payment_proof;
         abort_if($path === '', 404, 'Bukti pembayaran belum tersedia.');
@@ -44,7 +45,7 @@ class PaymentProofController extends Controller
         foreach (['local', 'public'] as $diskName) {
             $disk = Storage::disk($diskName);
 
-            if (!$disk->exists($path)) {
+            if (! $disk->exists($path)) {
                 continue;
             }
 
@@ -87,7 +88,7 @@ class PaymentProofController extends Controller
             if (
                 $payment->payment_method !== 'QRIS'
                 || $payment->payment_status !== 'WAITING_VERIFICATION'
-                || !filled($payment->payment_proof)
+                || ! filled($payment->payment_proof)
             ) {
                 return false;
             }
@@ -97,7 +98,7 @@ class PaymentProofController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (!$booking || $booking->status !== 'COMPLETED') {
+            if (! $booking || $booking->status !== 'COMPLETED') {
                 return false;
             }
 
@@ -110,14 +111,14 @@ class PaymentProofController extends Controller
             return true;
         });
 
-        if (!$updated) {
+        if (! $updated) {
             return back()->with('error', 'Bukti tidak dapat diminta ulang karena status pembayaran sudah berubah.');
         }
 
         return back()->with(
             'success',
             $note !== ''
-                ? 'Bukti pembayaran ditolak. Pelanggan diminta mengunggah ulang dengan catatan: ' . $note
+                ? 'Bukti pembayaran ditolak. Pelanggan diminta mengunggah ulang dengan catatan: '.$note
                 : 'Bukti pembayaran ditolak. Pelanggan diminta mengunggah ulang bukti QRIS.'
         );
     }

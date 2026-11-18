@@ -11,7 +11,7 @@
         $isPaid =
             $payment &&
             $payment->payment_status === 'PAID' &&
-            in_array($payment->payment_method, ['CASH', 'QRIS'], true) &&
+            in_array($payment->payment_method, ['CASH', 'QRIS', 'TRANSFER'], true) &&
             is_numeric($payment->amount) &&
             (float) $payment->amount > 0;
 
@@ -50,6 +50,15 @@
         }
 
         $isQrisWaiting = $payment?->payment_status === 'WAITING_VERIFICATION';
+        $isTransferWaiting =
+            $payment?->payment_method === 'TRANSFER' && $payment?->payment_status === 'WAITING_VERIFICATION';
+
+        // Rekening simulasi untuk demonstrasi aplikasi; bukan rekening asli.
+        $transferBank = [
+            'bank' => 'BCA',
+            'holder' => 'FIXPOINT SERVICE',
+            'account' => '1234567890',
+        ];
         // UNPAID + payment_proof terisi dipakai sebagai penanda Admin meminta upload ulang.
         $isQrisReuploadRequested = $payment?->payment_method === 'QRIS'
             && $payment?->payment_status === 'UNPAID'
@@ -525,6 +534,167 @@
             text-decoration: underline;
         }
 
+        /* Kartu rekening transfer: data simulasi untuk demonstrasi aplikasi. */
+        .transfer-card {
+            background: #fff;
+            border: 1px solid #dbeafe;
+            border-radius: 14px;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, .06);
+            overflow: hidden;
+            margin: 14px 0 16px;
+        }
+
+        .transfer-card-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            background: linear-gradient(120deg, #1e3a8a, #2563eb);
+            color: #fff;
+            padding: 16px 18px;
+        }
+
+        .transfer-bank-label {
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: .09em;
+            opacity: .82;
+            text-transform: uppercase;
+        }
+
+        .transfer-bank-name {
+            font-size: 17px;
+            font-weight: 850;
+            letter-spacing: .02em;
+        }
+
+        .transfer-bank-badge {
+            background: rgba(255, 255, 255, .16);
+            border: 1px solid rgba(255, 255, 255, .32);
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: .03em;
+            padding: 6px 11px;
+            white-space: nowrap;
+        }
+
+        .transfer-card-body {
+            padding: 18px;
+        }
+
+        .transfer-account {
+            background: #f8fbff;
+            border: 1px dashed #bfdbfe;
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        .transfer-account-label {
+            color: #64748b;
+            font-size: 10.5px;
+            font-weight: 750;
+            letter-spacing: .05em;
+            margin-bottom: 7px;
+            text-transform: uppercase;
+        }
+
+        .transfer-account-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .transfer-account-number {
+            color: #0f172a;
+            font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+            font-size: clamp(20px, 4vw, 26px);
+            font-weight: 800;
+            letter-spacing: .06em;
+            overflow-wrap: anywhere;
+        }
+
+        .copy-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 9px;
+            color: #1d4ed8;
+            cursor: pointer;
+            font: inherit;
+            font-size: 12.5px;
+            font-weight: 750;
+            padding: 9px 13px;
+            transition: background .2s ease, border-color .2s ease, color .2s ease;
+        }
+
+        .copy-btn:hover {
+            background: #dbeafe;
+            border-color: #93c5fd;
+        }
+
+        .copy-btn.copied {
+            background: #dcfce7;
+            border-color: #86efac;
+            color: #166534;
+        }
+
+        .transfer-holder {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .transfer-total {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            border-top: 1px dashed #cbd5e1;
+            margin-top: 14px;
+            padding-top: 14px;
+        }
+
+        .transfer-total-amount {
+            color: #1d4ed8;
+            font-size: clamp(20px, 4vw, 24px);
+            font-weight: 850;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .transfer-disclaimer {
+            display: flex;
+            align-items: flex-start;
+            gap: 9px;
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 10px;
+            color: #92400e;
+            font-size: 12px;
+            line-height: 1.6;
+            margin-top: 14px;
+            padding: 11px 13px;
+        }
+
+        .proof-form {
+            border-top: 1px dashed #cbd5e1;
+            margin-top: 16px;
+            padding-top: 16px;
+        }
+
+        .proof-form-note {
+            color: #64748b;
+            font-size: 12px;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
         .cancel-panel {
             background: #fff;
             border: 1px solid #fecaca;
@@ -778,6 +948,25 @@
                 overflow-wrap: anywhere;
             }
 
+            .transfer-holder {
+                grid-template-columns: 1fr;
+            }
+
+            .copy-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .transfer-total {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            .transfer-total-amount {
+                text-align: left;
+            }
+
             .status-bottom-actions {
                 align-items: stretch;
                 flex-direction: column;
@@ -1027,12 +1216,105 @@
                                 berubah menjadi <strong>Lunas</strong> setelah Admin menerima dan mengonfirmasi pembayaran.
                             </div>
                         @elseif ($payment->payment_method === 'TRANSFER')
-                            <div class="payment-note waiting">
-                                <strong>Pembayaran Transfer Bank</strong><br>
-                                Silakan transfer sesuai total tagihan ke rekening FixPoint Service yang diberikan Admin.
-                                Status pembayaran akan berubah menjadi <strong>Lunas</strong> setelah Admin mengonfirmasi
-                                dana masuk.
+                            <div class="transfer-card">
+                                <div class="transfer-card-head">
+                                    <div>
+                                        <div class="transfer-bank-label">Bank Tujuan</div>
+                                        <div class="transfer-bank-name">{{ $transferBank['bank'] }}</div>
+                                    </div>
+                                    <span class="transfer-bank-badge">Rekening Simulasi</span>
+                                </div>
+
+                                <div class="transfer-card-body">
+                                    <div class="transfer-account">
+                                        <div class="transfer-account-label">Nomor Rekening</div>
+                                        <div class="transfer-account-row">
+                                            <div class="transfer-account-number" id="nomorRekeningTujuan">
+                                                {{ $transferBank['account'] }}
+                                            </div>
+                                            <button type="button" class="copy-btn" id="btnSalinRekening"
+                                                data-account="{{ $transferBank['account'] }}">
+                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                    stroke-linejoin="round" aria-hidden="true">
+                                                    <rect x="9" y="9" width="12" height="12" rx="2" />
+                                                    <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+                                                </svg>
+                                                <span id="btnSalinRekeningText">Salin Nomor Rekening</span>
+                                            </button>
+                                        </div>
+                                        <div id="salinRekeningStatus" role="status" aria-live="polite"
+                                            style="display:none;color:#166534;font-size:11.5px;font-weight:700;margin-top:8px;">
+                                            Nomor rekening berhasil disalin.
+                                        </div>
+                                    </div>
+
+                                    <div class="transfer-holder">
+                                        <div class="info-item">
+                                            <div class="field-label">Nama Pemilik Rekening</div>
+                                            <div class="info-value">{{ $transferBank['holder'] }}</div>
+                                        </div>
+                                        <div class="info-item">
+                                            <div class="field-label">Bank Tujuan</div>
+                                            <div class="info-value">{{ $transferBank['bank'] }}</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="transfer-total">
+                                        <div>
+                                            <div class="field-label">TOTAL PEMBAYARAN</div>
+                                            <div class="payment-panel-description">Transfer tepat sesuai nominal tagihan.</div>
+                                        </div>
+                                        <div class="transfer-total-amount">
+                                            Rp {{ number_format($paymentAmount, 0, ',', '.') }}
+                                        </div>
+                                    </div>
+
+                                    <div class="transfer-disclaimer">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                            stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0;margin-top:1px;">
+                                            <circle cx="12" cy="12" r="10" />
+                                            <path d="M12 16v-5M12 8h.01" />
+                                        </svg>
+                                        <span>Gunakan informasi rekening ini sebagai rekening simulasi untuk demonstrasi
+                                            aplikasi.</span>
+                                    </div>
+                                </div>
                             </div>
+
+                            @if ($isTransferWaiting)
+                                <div class="payment-note waiting">
+                                    <strong>Bukti pembayaran sedang menunggu verifikasi Admin.</strong><br>
+                                    Pembayaran Anda belum dinyatakan lunas sampai Admin memverifikasi bukti transfer.
+                                    Halaman ini akan diperbarui setelah verifikasi selesai.
+                                    @if ($payment->payment_proof)
+                                        <br>
+                                        <a class="proof-preview" href="{{ route('cek-status.proof', $booking->service_id_code) }}"
+                                            target="_blank" rel="noopener">
+                                            Lihat bukti transfer yang dikirim
+                                        </a>
+                                    @endif
+                                </div>
+                            @else
+                                <form action="{{ route('cek-status.upload-proof') }}" method="POST"
+                                    enctype="multipart/form-data" class="proof-form">
+                                    @csrf
+                                    <input type="hidden" name="service_id_code"
+                                        value="{{ $booking->service_id_code }}">
+                                    <div class="proof-form-note">
+                                        Sudah melakukan transfer? Unggah bukti transfer (foto atau tangkapan layar) agar Admin
+                                        dapat memverifikasi pembayaran Anda.
+                                    </div>
+                                    <label class="field-label" for="payment_proof">Bukti Transfer (JPG, PNG, WEBP; maksimal 2
+                                        MB)</label>
+                                    <input type="file" name="payment_proof" id="payment_proof" class="status-file"
+                                        accept="image/jpeg,image/png,image/jpg,image/webp" required>
+                                    <button type="submit" class="btn-primary" style="width:100%;margin-top:12px;">
+                                        Kirim Bukti Pembayaran
+                                    </button>
+                                </form>
+                            @endif
                         @elseif ($payment->payment_method === 'QRIS')
                             @if ($isQrisWaiting)
                                 <div class="payment-note waiting">
@@ -1109,6 +1391,8 @@
             @endif
 
             @if ($isPaid)
+                @include('status.partials.pembayaran-berhasil')
+
                 <section class="receipt-card" id="paymentReceipt">
                     <div class="receipt-top">
                         <div class="receipt-brand-wrap">
@@ -1212,4 +1496,82 @@
             </div>
         @endif
     </div>
+
+    @if ($hasBooking && !$isPaid && $payment?->payment_method === 'TRANSFER')
+        <script>
+            (function() {
+                const button = document.getElementById('btnSalinRekening');
+                const status = document.getElementById('salinRekeningStatus');
+                const buttonText = document.getElementById('btnSalinRekeningText');
+
+                if (!button) {
+                    return;
+                }
+
+                const fallbackCopy = function(text) {
+                    const helper = document.createElement('textarea');
+                    helper.value = text;
+                    helper.setAttribute('readonly', '');
+                    helper.style.position = 'fixed';
+                    helper.style.opacity = '0';
+                    document.body.appendChild(helper);
+                    helper.select();
+
+                    let copied = false;
+
+                    try {
+                        copied = document.execCommand('copy');
+                    } catch (error) {
+                        copied = false;
+                    }
+
+                    document.body.removeChild(helper);
+
+                    return copied;
+                };
+
+                button.addEventListener('click', function() {
+                    const account = button.dataset.account || '';
+
+                    const onSuccess = function() {
+                        button.classList.add('copied');
+
+                        if (buttonText) {
+                            buttonText.textContent = 'Tersalin';
+                        }
+
+                        if (status) {
+                            status.style.display = 'block';
+                        }
+
+                        window.setTimeout(function() {
+                            button.classList.remove('copied');
+
+                            if (buttonText) {
+                                buttonText.textContent = 'Salin Nomor Rekening';
+                            }
+
+                            if (status) {
+                                status.style.display = 'none';
+                            }
+                        }, 2200);
+                    };
+
+                    if (navigator.clipboard && window.isSecureContext) {
+                        navigator.clipboard.writeText(account).then(onSuccess).catch(function() {
+                            if (fallbackCopy(account)) {
+                                onSuccess();
+                            }
+                        });
+
+                        return;
+                    }
+
+                    if (fallbackCopy(account)) {
+                        onSuccess();
+                    }
+                });
+            })();
+        </script>
+    @endif
 @endsection
