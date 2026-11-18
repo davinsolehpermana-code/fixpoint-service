@@ -1,0 +1,43 @@
+%% Flowchart — Pemilik Usaha (read-only)
+%% Berdasarkan route /login, /dashboard-pemilik, /pemilik/riwayat-servis, /pemilik/laporan-pemasukan
+
+flowchart TD
+    A([Mulai]) --> B[Buka halaman login]
+    B --> C[Isi email, password, pilih role Pemilik]
+    C --> D{Kredensial valid?}
+    D -->|Tidak| E[Tampilkan pesan<br/>email/password salah]
+    E --> B
+
+    D -->|Ya| F{Role akun = PEMILIK_USAHA?}
+    F -->|Tidak| G[Logout + pesan<br/>role tidak sesuai]
+    G --> B
+
+    F -->|Ya| H[Dashboard Pemilik Usaha]
+    H --> I[Lihat statistik:<br/>servis aktif, menunggu,<br/>selesai, pembayaran tertunda]
+
+    I --> J{Pilih aktivitas}
+    J -->|Monitoring servis| K[Lihat daftar booking<br/>beserta diagnosis, biaya,<br/>status servis dan pembayaran]
+    K --> K1{Ingin melihat<br/>bukti QRIS?}
+    K1 -->|Ya| K2[Buka bukti pembayaran<br/>read-only]
+    K1 -->|Tidak| L
+    K2 --> L
+
+    J -->|Riwayat servis| L[Pilih rentang tanggal]
+    L --> L1[Lihat riwayat servis selesai<br/>+ ringkasan total biaya]
+    L1 --> L2{Unduh laporan?}
+    L2 -->|PDF| L3[Unduh PDF]
+    L2 -->|Excel| L4[Unduh XLSX]
+    L2 -->|Tidak| M
+
+    J -->|Laporan pemasukan| M[Pilih periode dan metode]
+    M --> M1[Lihat total pemasukan,<br/>CASH, QRIS, jumlah transaksi]
+    M1 --> M2{Unduh laporan?}
+    M2 -->|PDF| M3[Unduh PDF]
+    M2 -->|Excel| M4[Unduh XLSX]
+    M2 -->|Tidak| N
+
+    J -->|Selesai| N([Selesai])
+    L3 --> N
+    L4 --> N
+    M3 --> N
+    M4 --> N

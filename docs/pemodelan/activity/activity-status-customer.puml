@@ -1,0 +1,80 @@
+@startuml activity-status-customer
+title Activity Diagram — Customer Mengecek Status Servis
+
+|Customer|
+start
+:Buka halaman Cek Status;
+:Masukkan Service ID;
+
+|Sistem|
+:Validasi format Service ID;
+if (Format valid?) then (tidak)
+  :Tampilkan pesan Service ID tidak valid;
+  stop
+else (ya)
+  :Cari booking beserta pelanggan,
+  perangkat, jadwal, layanan, pembayaran;
+  if (Booking ditemukan?) then (tidak)
+    :Tampilkan pesan Service ID tidak ditemukan;
+    stop
+  else (ya)
+    :Ambil catatan servis terbaru;
+    :Tampilkan diagnosis, estimasi biaya,
+    biaya akhir, status servis,
+    status pembayaran, dan jadwal;
+  endif
+endif
+
+|Customer|
+if (Ingin membatalkan booking?) then (ya)
+  |Sistem|
+  if (Status PENDING / WAITING_VERIFICATION?) then (ya)
+    |Customer|
+    :Isi alasan pembatalan;
+    |Sistem|
+    :Mulai transaksi dan kunci booking;
+    :Ubah status menjadi CANCELLED
+    dan simpan alasan;
+    :Kurangi current_booking jadwal;
+    if (Status jadwal FULL dan slot tersisa?) then (ya)
+      :Ubah status jadwal menjadi AVAILABLE;
+    else (tidak)
+    endif
+    :Commit transaksi;
+    :Tampilkan pesan pembatalan berhasil;
+    stop
+  else (tidak)
+    :Tampilkan pesan booking tidak dapat dibatalkan;
+  endif
+else (tidak)
+endif
+
+|Customer|
+if (Servis COMPLETED dan metode QRIS?) then (ya)
+  :Pilih file bukti pembayaran;
+  |Sistem|
+  :Validasi tipe dan ukuran file (maks 2 MB);
+  if (File valid?) then (tidak)
+    :Tampilkan pesan format tidak sesuai;
+    stop
+  else (ya)
+    :Simpan file ke disk public;
+    :Mulai transaksi dan kunci booking;
+    if (Tagihan tersedia dan status belum PAID?) then (tidak)
+      :Hapus file baru dan batalkan transaksi;
+      :Tampilkan pesan penolakan;
+      stop
+    else (ya)
+      :Simpan path bukti dan ubah status
+      menjadi WAITING_VERIFICATION;
+      :Commit transaksi dan hapus bukti lama;
+      :Tampilkan pesan menunggu verifikasi Admin;
+      stop
+    endif
+  endif
+else (tidak)
+  :Tampilkan status pembayaran terkini;
+  stop
+endif
+
+@enduml

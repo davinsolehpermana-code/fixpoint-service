@@ -29,8 +29,8 @@ class BookingController extends Controller
                 'regex:/^[a-zA-Z\\s\\.\\,\\-]+$/',
             ],
             'telepon' => [
-                'required', 'string', 'min:10', 'max:15',
-                'regex:/^[0-9+\\-\\s()]+$/',
+                'required', 'string', 'min:10', 'max:12',
+                'regex:/^[0-9]+$/',
             ],
             'jenis_perangkat' => ['required', Rule::in(['Laptop', 'PC Desktop'])],
             // Merek/model hanya relevan untuk laptop; PC desktop cukup jenis perangkatnya.
@@ -42,10 +42,10 @@ class BookingController extends Controller
             ],
             'keluhan' => ['required', 'string', 'max:1000'],
             'schedule_id' => ['required', 'integer', 'exists:schedules,schedule_id'],
-            'payment_method' => ['required', Rule::in(['CASH', 'QRIS'])],
+            'payment_method' => ['required', Rule::in(['CASH', 'QRIS', 'TRANSFER'])],
         ], [
             'nama.regex' => 'Nama hanya boleh berisi huruf, spasi, tanda titik, koma, atau strip.',
-            'telepon.regex' => 'Nomor telepon hanya boleh berisi angka dan karakter + - ( ).',
+            'telepon.regex' => 'Nomor telepon hanya boleh berisi angka 0-9.',
             'telepon.min' => 'Nomor telepon minimal 10 digit.',
             'merek_model.required_unless' => 'Merek / model wajib diisi untuk perangkat laptop.',
             'service_id.exists' => 'Layanan yang dipilih tidak tersedia. Silakan pilih layanan lain.',

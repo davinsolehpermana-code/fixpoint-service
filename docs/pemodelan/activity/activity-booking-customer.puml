@@ -1,0 +1,54 @@
+@startuml activity-booking-customer
+title Activity Diagram — Customer Melakukan Booking Servis (swimlane)
+
+|Customer|
+start
+:Buka halaman Booking Servis;
+:Pilih layanan dan lihat estimasi harga;
+:Pilih jadwal yang tersedia;
+:Pilih metode pembayaran CASH / QRIS;
+:Isi nama, nomor telepon, jenis perangkat,
+merek/model, dan keluhan;
+
+|Sistem|
+:Validasi seluruh input;
+if (Input valid?) then (tidak)
+  :Tampilkan pesan error per field;
+  |Customer|
+  :Perbaiki input;
+  |Sistem|
+else (ya)
+  :Mulai transaksi database;
+  :Kunci baris jadwal (SELECT ... FOR UPDATE);
+  if (Jadwal tersedia dan kuota belum penuh?) then (tidak)
+    :Batalkan transaksi;
+    :Tampilkan pesan jadwal penuh;
+    |Customer|
+    :Pilih jadwal lain;
+    stop
+  else (ya)
+    :Cari pelanggan berdasarkan nomor telepon;
+    if (Pelanggan sudah ada?) then (tidak)
+      :Buat data pelanggan baru;
+    else (ya)
+      :Gunakan data pelanggan yang ada;
+    endif
+    :Simpan data perangkat dan keluhan;
+    :Buat Service ID unik FP-YYYYMMDD-XXXXX;
+    :Simpan booking dengan status PENDING;
+    :Simpan pembayaran UNPAID sesuai metode;
+    :Tambahkan current_booking jadwal;
+    if (Kuota jadwal habis?) then (ya)
+      :Ubah status jadwal menjadi FULL;
+    else (tidak)
+    endif
+    :Commit transaksi;
+    :Tampilkan notifikasi sukses dan Service ID;
+    |Customer|
+    :Catat / salin Service ID;
+    :Gunakan Service ID untuk cek status;
+    stop
+  endif
+endif
+
+@enduml

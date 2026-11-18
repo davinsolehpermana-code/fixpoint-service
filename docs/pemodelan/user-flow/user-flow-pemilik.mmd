@@ -1,0 +1,48 @@
+%% User Flow — Pemilik Usaha: perjalanan antarhalaman pemantauan
+%% Halaman aktual: login, dashboard-pemilik, riwayat-servis, laporan-pemasukan, bukti QRIS
+
+flowchart LR
+    subgraph Auth["Masuk"]
+        A1[Halaman Login]
+        A2[Pilih role Pemilik Usaha<br/>+ email dan password]
+    end
+
+    subgraph Dash["Dashboard Pemilik"]
+        D1[Empat kartu statistik:<br/>aktif, menunggu, selesai,<br/>pembayaran tertunda]
+        D2[Tabel monitoring servis:<br/>booking, diagnosis, biaya,<br/>status servis dan pembayaran]
+        D3[Panel bukti QRIS terbaru]
+        D4[Panel riwayat servis<br/>berdasarkan tanggal]
+    end
+
+    subgraph Bukti["Melihat Bukti"]
+        B1[Klik Lihat Bukti]
+        B2[Gambar bukti tampil<br/>read-only]
+    end
+
+    subgraph Riwayat["Menu Riwayat Servis"]
+        R1[Atur rentang tanggal]
+        R2[Tabel riwayat + ringkasan<br/>total servis dan biaya]
+        R3[Unduh PDF / Excel]
+    end
+
+    subgraph Income["Menu Laporan Pemasukan"]
+        I1[Atur periode dan metode]
+        I2[Ringkasan total pemasukan,<br/>CASH, QRIS, transaksi]
+        I3[Unduh PDF / Excel]
+    end
+
+    A1 --> A2 --> D1
+    D1 --> D2
+    D1 --> D3
+    D1 --> D4
+
+    D2 --> B1 --> B2
+    D3 --> B1
+
+    D4 --> R1 --> R2 --> R3
+    D2 --> I1 --> I2 --> I3
+
+    style D1 fill:#eff6ff,stroke:#2563eb
+    style B2 fill:#f8fafc,stroke:#475569
+    style R3 fill:#f0fdf4,stroke:#16a34a
+    style I3 fill:#f0fdf4,stroke:#16a34a

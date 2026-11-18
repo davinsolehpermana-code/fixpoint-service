@@ -37,7 +37,8 @@ return new class extends Migration
 
             $table->enum('payment_method', [
                 'QRIS',
-                'CASH'
+                'CASH',
+                'TRANSFER'
             ]);
 
             $table->enum('payment_status', [

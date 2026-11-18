@@ -95,6 +95,9 @@ Route::middleware(['auth', 'role:ADMIN'])->group(function () {
     // Operasional
     Route::get('/admin/jadwal-servis', [AdminPanelController::class, 'schedules'])->name('admin.schedules.index');
     Route::post('/admin/jadwal-servis', [AdminPanelController::class, 'storeSchedule'])->name('admin.schedules.store');
+    Route::get('/admin/jadwal-servis/{scheduleId}/edit', [AdminPanelController::class, 'editSchedule'])->name('admin.schedules.edit');
+    Route::put('/admin/jadwal-servis/{scheduleId}', [AdminPanelController::class, 'updateSchedule'])->name('admin.schedules.update');
+    Route::delete('/admin/jadwal-servis/{scheduleId}', [AdminPanelController::class, 'destroySchedule'])->name('admin.schedules.destroy');
     Route::patch('/admin/jadwal-servis/{scheduleId}/status', [AdminPanelController::class, 'updateScheduleStatus'])->name('admin.schedules.status');
     Route::get('/admin/kelola-proses-servis', [AdminPanelController::class, 'serviceProcess'])->name('admin.service-process');
 
