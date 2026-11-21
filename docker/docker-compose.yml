@@ -35,7 +35,7 @@ services:
 
     command: >
       sh -c "php artisan storage:link &&
-             php artisan serve --host=0.0.0.0 --port=8000"
+             php artisan serve --host=0.0.0.0 --port=2289"
 
   db:
     image: mysql:8.0
