@@ -46,5 +46,8 @@ class DatabaseSeeder extends Seeder
                 'role' => 'PEMILIK_USAHA'
             ]
         );
+
+        // 3. Data demo booking, proses servis, dan pembayaran (CASH/QRIS/TRANSFER).
+        $this->call(DemoBookingSeeder::class);
     }
 }
